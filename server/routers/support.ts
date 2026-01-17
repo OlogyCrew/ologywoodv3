@@ -217,20 +217,18 @@ export const supportRouter = router({
       const db = await getDb();
       if (!db) return [];
 
-      let whereConditions = true as any;
-
-      if (input.categoryId) {
-        whereConditions = and(whereConditions, eq(knowledgeBaseArticles.category, input.categoryId.toString())) as any;
-      }
+      const conditions: any[] = [];
 
       if (input.search) {
-        whereConditions = and(whereConditions, like(knowledgeBaseArticles.title, `%${input.search}%`)) as any;
+        conditions.push(like(knowledgeBaseArticles.title, `%${input.search}%`));
       }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
       const articles = await db
         .select()
         .from(knowledgeBaseArticles)
-        .where(whereConditions)
+        .where(whereClause)
         .orderBy(desc(knowledgeBaseArticles.views))
         .limit(input.limit)
         .offset(input.offset);
@@ -308,12 +306,12 @@ export const supportRouter = router({
       const db = await getDb();
       if (!db) return [];
 
-      let whereConditions = input.categoryId ? eq(faqs.category, input.categoryId.toString()) : true as any;
+      const whereClause = input.categoryId ? eq(faqs.category, input.categoryId.toString()) : undefined;
 
       const faqList = await db
         .select()
         .from(faqs)
-        .where(whereConditions)
+        .where(whereClause)
         .limit(input.limit);
 
       return faqList;
