@@ -40,6 +40,8 @@ import VenueAnalytics from "./pages/VenueAnalytics";
 import VenueEvents from "./pages/VenueEvents";
 import VenueBookingRequests from "./pages/VenueBookingRequests";
 import VenueBilling from "./pages/VenueBilling";
+import VenueTeamManagement from "./pages/VenueTeamManagement";
+import VenueSettings from "./pages/VenueSettings";
 import CertificateVerification from "./pages/CertificateVerification";
 import ContractNavigation from "./components/ContractNavigation";
 
@@ -83,6 +85,8 @@ function Router() {
       <Route path="/venue/events" component={VenueEvents} />
       <Route path="/venue/booking-requests" component={VenueBookingRequests} />
       <Route path="/venue/billing" component={VenueBilling} />
+      <Route path="/venue/team" component={VenueTeamManagement} />
+      <Route path="/venue/settings" component={VenueSettings} />
       <Route path="/verify-certificate" component={CertificateVerification} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
