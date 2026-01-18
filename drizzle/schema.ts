@@ -333,7 +333,6 @@ export const supportTickets = mysqlTable("support_tickets", {
   userId: int("userId").notNull(),
   subject: varchar("subject", { length: 255 }).notNull(),
   description: text("description").notNull(),
-  category: varchar("category", { length: 100 }),
   priority: mysqlEnum("priority", ["low", "medium", "high", "urgent"]).default("medium").notNull(),
   status: mysqlEnum("status", ["open", "in_progress", "waiting_user", "resolved", "closed"]).default("open").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
