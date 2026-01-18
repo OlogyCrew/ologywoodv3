@@ -43,6 +43,7 @@ import VenueBilling from "./pages/VenueBilling";
 import VenueTeamManagement from "./pages/VenueTeamManagement";
 import VenueSettings from "./pages/VenueSettings";
 import VenueOnboardingChecklist from "./pages/VenueOnboardingChecklist";
+import VenueMessages from "./pages/VenueMessages";
 import CertificateVerification from "./pages/CertificateVerification";
 import ContractNavigation from "./components/ContractNavigation";
 
@@ -89,6 +90,7 @@ function Router() {
       <Route path="/venue/team" component={VenueTeamManagement} />
       <Route path="/venue/settings" component={VenueSettings} />
       <Route path="/venue/onboarding" component={VenueOnboardingChecklist} />
+      <Route path="/venue/messages" component={VenueMessages} />
       <Route path="/verify-certificate" component={CertificateVerification} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
