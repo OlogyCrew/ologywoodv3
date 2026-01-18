@@ -601,28 +601,34 @@ export const appRouter = router({
         if (!profile) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Artist profile not found' });
         }
+        
+        // Parse date string (YYYY-MM-DD) without timezone conversion
+        const [year, month, day] = input.date.split('-').map(Number);
+        const dateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
+        
         await db.setAvailability({
           artistId: profile.id,
-          date: new Date(input.date),
+          date: dateObj,
           status: input.status,
           notes: input.notes,
         });
         
         // Send notifications to venues who favorited this artist (only for new availability)
-        if (input.status === 'available') {
-          const venues = await db.getVenuesWhoFavoritedArtist(profile.id);
-          for (const venue of venues) {
-            if (venue.email) {
-              await email.sendAvailabilityUpdateNotification(
-                venue.email,
-                venue.organizationName || venue.name || 'Venue',
-                profile.artistName,
-                profile.id,
-                [input.date]
-              );
-            }
-          }
-        }
+        // TODO: Fix database schema issue with favorites table before enabling this
+        // if (input.status === 'available') {
+        //   const venues = await db.getVenuesWhoFavoritedArtist(profile.id);
+        //   for (const venue of venues) {
+        //     if (venue.email) {
+        //       await email.sendAvailabilityUpdateNotification(
+        //         venue.email,
+        //         venue.organizationName || venue.name || 'Venue',
+        //         profile.artistName,
+        //         profile.id,
+        //         [input.date]
+        //       );
+        //     }
+        //   }
+        // }
         
         return { success: true };
       }),

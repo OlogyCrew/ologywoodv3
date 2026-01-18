@@ -2088,3 +2088,7 @@ The Ologywood platform is production-ready with:
   - Solution: Implemented request timeout handling with staleTime and gcTime
 - [x] Test login flow on mobile Chrome after fix
 - [x] Verify desktop login still works
+- [x] Commit OAuth timeout fix to GitHub (30-second timeout added)
+- [ ] Waiting for Manus support to deploy changes to live site
+- [ ] Test mobile login after deployment by Manus
+
