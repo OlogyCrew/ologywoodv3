@@ -29,6 +29,7 @@ import { helpAndSupportRouter } from "./routers/helpAndSupport";
 import { contractPdfRouter } from "./routers/contractPdf";
 import { faqRouter } from "./routers/faq";
 import { riderContractsRouter } from "./routers/rider-contracts";
+import { favoritesRouter } from "./routers/favorites";
 import * as contractPdfService from "./contractPdfService";
 import * as contractArchiveService from "./contractArchiveService";
 
@@ -55,6 +56,7 @@ export const appRouter = router({
   contracts: contractsRouter,
   contractManagement: contractManagementRouter,
   riderContracts: riderContractsRouter,
+  favorites: favoritesRouter,
   // contractStatus: contractStatusRouter, // Temporarily disabled
   contractAudit: contractAuditRouter,
   referrals: referralRouter,
