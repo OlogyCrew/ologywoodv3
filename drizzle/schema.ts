@@ -445,3 +445,129 @@ export const notificationPreferences = mysqlTable("notification_preferences", {
 
 export type NotificationPreference = typeof notificationPreferences.$inferSelect;
 export type InsertNotificationPreference = typeof notificationPreferences.$inferInsert;
+
+
+/**
+ * Rider Contracts - Store artist rider requirements and specifications
+ */
+export const riderContracts = mysqlTable("rider_contracts", {
+  id: int("id").autoincrement().primaryKey(),
+  artistId: int("artistId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(), // e.g., "Standard Rider", "Festival Rider"
+  description: text("description"),
+  isDefault: boolean("isDefault").default(false),
+  
+  // Performance Details
+  performanceDuration: int("performanceDuration"), // in minutes
+  minFee: int("minFee"), // minimum performance fee in cents
+  maxFee: int("maxFee"), // maximum performance fee in cents
+  
+  // Technical Requirements (JSON for flexibility)
+  technicalRequirements: json("technicalRequirements").$type<{
+    soundSystem?: { paWattage?: number; mixerChannels?: number; microphones?: number; monitors?: boolean };
+    lighting?: { required?: boolean; spotlights?: number; colorWash?: boolean; specialEffects?: boolean };
+    stage?: { minWidth?: number; minDepth?: number; height?: number; riser?: boolean };
+    equipment?: string[];
+    recording?: { audioAllowed?: boolean; videoAllowed?: boolean; streamingAllowed?: boolean };
+  }>(),
+  
+  // Hospitality Requirements
+  hospitalityRequirements: json("hospitalityRequirements").$type<{
+    meals?: { required?: boolean; type?: string; count?: number };
+    beverages?: { alcoholic?: boolean; nonAlcoholic?: boolean; quantity?: number };
+    dressingRoom?: { required?: boolean; amenities?: string[] };
+    parking?: { spaces?: number; type?: string };
+    accommodations?: { required?: boolean; nights?: number; quality?: string };
+    security?: { required?: boolean; staffCount?: number };
+  }>(),
+  
+  // Logistics
+  loadInTime: varchar("loadInTime", { length: 50 }), // e.g., "2 hours before"
+  soundcheckDuration: int("soundcheckDuration"), // in minutes
+  staffRequired: json("staffRequired").$type<{
+    soundEngineer?: boolean;
+    lightingTechnician?: boolean;
+    stageManager?: boolean;
+    other?: string[];
+  }>(),
+  
+  // Restrictions
+  restrictions: json("restrictions").$type<{
+    smokingAllowed?: boolean;
+    alcoholAllowed?: boolean;
+    pyrotechnicsAllowed?: boolean;
+    setlistApprovalRequired?: boolean;
+    songRestrictions?: string[];
+  }>(),
+  
+  // Insurance & Liability
+  insuranceRequired: boolean("insuranceRequired").default(false),
+  insuranceCoverageAmount: int("insuranceCoverageAmount"), // in cents
+  
+  // Cancellation Policy
+  cancellationNoticeDays: int("cancellationNoticeDays").default(14),
+  cancellationFeePercent: int("cancellationFeePercent").default(0), // 0-100
+  
+  // Additional Notes
+  specialRequests: text("specialRequests"),
+  
+  // Status
+  isActive: boolean("isActive").default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RiderContract = typeof riderContracts.$inferSelect;
+export type InsertRiderContract = typeof riderContracts.$inferInsert;
+
+/**
+ * Rider Contract Instances - Track which rider was used for specific bookings
+ */
+export const riderContractInstances = mysqlTable("rider_contract_instances", {
+  id: int("id").autoincrement().primaryKey(),
+  bookingId: int("bookingId").notNull(),
+  riderContractId: int("riderContractId").notNull(),
+  
+  // Snapshot of the rider at time of booking (in case it was modified later)
+  riderSnapshot: json("riderSnapshot").$type<any>(),
+  
+  // Rider acceptance status
+  acceptedByVenue: boolean("acceptedByVenue").default(false),
+  acceptedByArtist: boolean("acceptedByArtist").default(false),
+  
+  // Modifications/Negotiations
+  proposedModifications: json("proposedModifications").$type<any>(),
+  modificationStatus: mysqlEnum("modificationStatus", ["none", "pending", "accepted", "rejected"]).default("none"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RiderContractInstance = typeof riderContractInstances.$inferSelect;
+export type InsertRiderContractInstance = typeof riderContractInstances.$inferInsert;
+
+/**
+ * Rider Contract Templates - Pre-built templates for common scenarios
+ */
+export const riderContractTemplates = mysqlTable("rider_contract_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(), // e.g., "Small Venue", "Festival", "Corporate Event"
+  description: text("description"),
+  category: varchar("category", { length: 100 }), // "small_venue", "festival", "corporate", "wedding", "tour"
+  
+  // Template data
+  templateData: json("templateData").$type<any>(),
+  
+  // Usage stats
+  usageCount: int("usageCount").default(0),
+  
+  // Status
+  isPublic: boolean("isPublic").default(true),
+  isActive: boolean("isActive").default(true),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RiderContractTemplate = typeof riderContractTemplates.$inferSelect;
+export type InsertRiderContractTemplate = typeof riderContractTemplates.$inferInsert;

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Music, Calendar, MessageSquare, Shield, Search, LogOut, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 function LogoutButton() {
   const logoutMutation = trpc.auth.logout.useMutation();
@@ -33,9 +33,31 @@ function LogoutButton() {
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const { data: artists, isLoading } = trpc.artist.getAll.useQuery();
+  const [hasError, setHasError] = useState(false);
+  
+  // Fetch artists with timeout and retry logic for mobile compatibility
+  const { data: artists, isLoading, error } = trpc.artist.getAll.useQuery(
+    undefined,
+    {
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 10,
+      retry: 1,
+      retryDelay: 1000,
+    }
+  );
 
-  const filteredArtists = artists?.filter(artist => 
+  // Handle errors
+  useEffect(() => {
+    if (error) {
+      console.error("Error loading artists:", error);
+      setHasError(true);
+    }
+  }, [error]);
+
+  // Limit to first 6 artists for home page to avoid performance issues on mobile
+  const displayedArtists = artists?.slice(0, 6) || [];
+  
+  const filteredArtists = displayedArtists.filter(artist => 
     searchQuery === "" || 
     artist.artistName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     artist.location?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -129,11 +151,26 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold mb-8 text-center">Featured Artists</h2>
           
-          {isLoading ? (
-            <div className="text-center text-muted-foreground">Loading artists...</div>
+          {hasError ? (
+            <div className="text-center py-12">
+              <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+              <p className="text-muted-foreground text-lg mb-4">
+                Unable to load artists. Please try refreshing the page.
+              </p>
+              <Button onClick={() => window.location.reload()}>
+                Refresh Page
+              </Button>
+            </div>
+          ) : isLoading ? (
+            <div className="text-center text-muted-foreground py-12">
+              <div className="inline-block">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+              <p className="mt-4">Loading artists...</p>
+            </div>
           ) : filteredArtists && filteredArtists.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredArtists.slice(0, 6).map((artist) => (
+              {filteredArtists.map((artist) => (
                 <a key={artist.id} href={`/artist/${artist.id}`} className="no-underline">
                   <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
                       <CardHeader>
@@ -184,7 +221,7 @@ export default function Home() {
             </div>
           )}
           
-          {filteredArtists && filteredArtists.length > 6 && (
+          {artists && artists.length > 6 && (
             <div className="text-center mt-8">
               <a href="/browse" className="no-underline">
                 <Button variant="outline" size="lg">

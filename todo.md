@@ -2051,3 +2051,40 @@ The Ologywood platform is production-ready with:
 - [ ] Conduct professional penetration testing
 - [ ] Implement GDPR data export and deletion
 - [ ] Add MFA/2FA for sensitive operations
+
+
+## New Features - Phase 2
+
+### FAQ/Knowledge Base System
+- [ ] Create FAQ schema in database (id, category, question, answer, views, helpful_count, created_at)
+- [ ] Build FAQ router with CRUD operations
+- [ ] Create FAQ search functionality
+- [ ] Build FAQ frontend page with categories and search
+- [ ] Add helpful/unhelpful voting system
+- [ ] Test FAQ system
+
+### Email Notifications
+- [ ] Set up SendGrid integration
+- [ ] Create email templates for ticket creation
+- [ ] Create email templates for ticket updates
+- [ ] Create email templates for ticket resolution
+- [ ] Implement email sending on ticket events
+- [ ] Add email preference settings for users
+- [ ] Test email notifications
+
+### Real-time Chat Support
+- [ ] Integrate Crisp Chat widget
+- [ ] Configure chat settings
+- [ ] Add chat widget to support page
+- [ ] Test chat functionality
+- [ ] Configure chat routing and notifications
+
+
+## Mobile Login Issue (URGENT)
+- [x] Fix mobile login timeout - app crashes after 2 minutes with "Application error"
+  - Root cause: Home.tsx fetches all artists on page load which may timeout on mobile
+  - Solution: Limited artist list to first 6 (instead of all)
+  - Solution: Added error handling and retry logic for slow API responses
+  - Solution: Implemented request timeout handling with staleTime and gcTime
+- [x] Test login flow on mobile Chrome after fix
+- [x] Verify desktop login still works

@@ -27,6 +27,8 @@ import { analyticsRouter } from "./routers/analytics";
 import { contractManagementRouter } from "./routers/contract-management";
 import { helpAndSupportRouter } from "./routers/helpAndSupport";
 import { contractPdfRouter } from "./routers/contractPdf";
+import { faqRouter } from "./routers/faq";
+import { riderContractsRouter } from "./routers/rider-contracts";
 import * as contractPdfService from "./contractPdfService";
 import * as contractArchiveService from "./contractArchiveService";
 
@@ -48,9 +50,11 @@ const venueProcedure = protectedProcedure.use(async ({ ctx, next }) => {
 
 export const appRouter = router({
   system: systemRouter,
+  faq: faqRouter,
   analytics: analyticsRouter,
   contracts: contractsRouter,
   contractManagement: contractManagementRouter,
+  riderContracts: riderContractsRouter,
   // contractStatus: contractStatusRouter, // Temporarily disabled
   contractAudit: contractAuditRouter,
   referrals: referralRouter,

@@ -722,3 +722,145 @@ export async function sendContractForSignature(params: {
     html,
   });
 }
+
+
+/**
+ * Send support ticket created notification
+ */
+export async function sendSupportTicketCreatedEmail(params: {
+  recipientEmail: string;
+  recipientName: string;
+  ticketId: string;
+  subject: string;
+  description: string;
+  priority: string;
+}) {
+  const { recipientEmail, recipientName, ticketId, subject: ticketSubject, description, priority } = params;
+
+  const priorityColor = priority === 'high' ? '#ef4444' : priority === 'medium' ? '#f59e0b' : '#10b981';
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #8b5cf6;">Support Ticket Created</h2>
+      <p>Hi ${recipientName},</p>
+      <p>Thank you for contacting Ologywood support. We've received your ticket and will review it shortly.</p>
+      
+      <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <p><strong>Ticket ID:</strong> ${ticketId}</p>
+        <p><strong>Subject:</strong> ${ticketSubject}</p>
+        <p><strong>Priority:</strong> <span style="color: ${priorityColor}; font-weight: bold; text-transform: capitalize;">${priority}</span></p>
+        <p><strong>Description:</strong></p>
+        <p style="white-space: pre-wrap; color: #555;">${description}</p>
+      </div>
+      
+      <p>You can track the status of your ticket in your dashboard. We aim to respond to all tickets within 24 hours.</p>
+      
+      <a href="https://${ENV.appId}.manus.space/support" style="display: inline-block; background: #8b5cf6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">
+        View Your Tickets
+      </a>
+      
+      <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+        This is an automated message from Ologywood. Please do not reply to this email. Use your dashboard to communicate with support.
+      </p>
+    </div>
+  `;
+
+  return sendEmail({
+    to: recipientEmail,
+    subject: `Support Ticket Created: ${ticketSubject}`,
+    html,
+  });
+}
+
+/**
+ * Send support ticket updated notification
+ */
+export async function sendSupportTicketUpdatedEmail(params: {
+  recipientEmail: string;
+  recipientName: string;
+  ticketId: string;
+  subject: string;
+  status: string;
+  latestMessage: string;
+  updatedBy: string;
+}) {
+  const { recipientEmail, recipientName, ticketId, subject: ticketSubject, status, latestMessage, updatedBy } = params;
+
+  const statusColor = status === 'resolved' ? '#10b981' : status === 'in_progress' ? '#3b82f6' : '#f59e0b';
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #8b5cf6;">Support Ticket Updated</h2>
+      <p>Hi ${recipientName},</p>
+      <p>Your support ticket has been updated by ${updatedBy}.</p>
+      
+      <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <p><strong>Ticket ID:</strong> ${ticketId}</p>
+        <p><strong>Subject:</strong> ${ticketSubject}</p>
+        <p><strong>Status:</strong> <span style="color: ${statusColor}; font-weight: bold; text-transform: capitalize;">${status.replace('_', ' ')}</span></p>
+        <p><strong>Latest Update:</strong></p>
+        <p style="white-space: pre-wrap; color: #555; border-left: 3px solid #8b5cf6; padding-left: 12px;">${latestMessage}</p>
+      </div>
+      
+      <p>Please log in to your dashboard to view the full conversation and any additional details.</p>
+      
+      <a href="https://${ENV.appId}.manus.space/support" style="display: inline-block; background: #8b5cf6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">
+        View Ticket Details
+      </a>
+      
+      <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+        This is an automated message from Ologywood. Please do not reply to this email. Use your dashboard to communicate with support.
+      </p>
+    </div>
+  `;
+
+  return sendEmail({
+    to: recipientEmail,
+    subject: `Support Ticket Updated: ${ticketSubject}`,
+    html,
+  });
+}
+
+/**
+ * Send support ticket resolved notification
+ */
+export async function sendSupportTicketResolvedEmail(params: {
+  recipientEmail: string;
+  recipientName: string;
+  ticketId: string;
+  subject: string;
+  resolutionSummary: string;
+}) {
+  const { recipientEmail, recipientName, ticketId, subject: ticketSubject, resolutionSummary } = params;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #10b981;">Support Ticket Resolved ✓</h2>
+      <p>Hi ${recipientName},</p>
+      <p>Great news! Your support ticket has been resolved.</p>
+      
+      <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <p><strong>Ticket ID:</strong> ${ticketId}</p>
+        <p><strong>Subject:</strong> ${ticketSubject}</p>
+        <p><strong>Resolution:</strong></p>
+        <p style="white-space: pre-wrap; color: #555;">${resolutionSummary}</p>
+      </div>
+      
+      <p>If you have any follow-up questions or if the issue is not fully resolved, please don't hesitate to reopen the ticket or create a new one.</p>
+      
+      <a href="https://${ENV.appId}.manus.space/support" style="display: inline-block; background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">
+        View Resolved Ticket
+      </a>
+      
+      <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+        Thank you for using Ologywood support. We appreciate your business!
+      </p>
+    </div>
+  `;
+
+  return sendEmail({
+    to: recipientEmail,
+    subject: `Support Ticket Resolved: ${ticketSubject}`,
+    html,
+  });
+}
