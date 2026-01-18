@@ -30,6 +30,7 @@ function LogoutButton() {
   );
 }
 
+// Test change to verify Publish button works
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
