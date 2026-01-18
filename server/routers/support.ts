@@ -9,7 +9,6 @@ export const supportRouter = router({
   // Support Tickets
   createTicket: protectedProcedure
     .input(z.object({
-      category: z.string().optional(),
       subject: z.string().min(5).max(255),
       description: z.string().min(10),
       priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
@@ -20,7 +19,6 @@ export const supportRouter = router({
 
       const result = await db.insert(supportTickets).values({
         userId: ctx.user.id,
-        category: input.category,
         subject: input.subject,
         description: input.description,
         priority: input.priority || "medium",

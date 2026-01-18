@@ -73,13 +73,13 @@ export async function getOpenSupportTickets(limit = 100, offset = 0) {
 }
 
 /**
- * Get tickets by category
+ * Get tickets by priority (category removed - not in database)
  */
 export async function getTicketsByCategory(category: string, limit = 50, offset = 0) {
+  // Category column doesn't exist in database, returning all tickets instead
   return db
     .select()
     .from(supportTickets)
-    .where(eq(supportTickets.category, category as any))
     .orderBy(desc(supportTickets.createdAt))
     .limit(limit)
     .offset(offset);
@@ -341,11 +341,7 @@ export async function calculateDailySupportMetrics() {
   const breachedCount = todayTickets.filter(t => t.slaStatus === 'breached').length;
   const slaComplianceRate = totalTickets > 0 ? Math.round(((totalTickets - breachedCount) / totalTickets) * 100) : 100;
 
-  // Category breakdown
-  const categoryBreakdown: Record<string, number> = {};
-  todayTickets.forEach(t => {
-    categoryBreakdown[t.category] = (categoryBreakdown[t.category] || 0) + 1;
-  });
+
 
   // Priority breakdown
   const priorityBreakdown: Record<string, number> = {};
@@ -362,7 +358,6 @@ export async function calculateDailySupportMetrics() {
     averageResolutionTime: Math.round(avgResolutionTime),
     slaComplianceRate,
     slaBreachCount: breachedCount,
-    categoryBreakdown,
     priorityBreakdown,
   });
 }
