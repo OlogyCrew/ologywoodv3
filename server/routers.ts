@@ -614,21 +614,20 @@ export const appRouter = router({
         });
         
         // Send notifications to venues who favorited this artist (only for new availability)
-        // TODO: Fix database schema issue with favorites table before enabling this
-        // if (input.status === 'available') {
-        //   const venues = await db.getVenuesWhoFavoritedArtist(profile.id);
-        //   for (const venue of venues) {
-        //     if (venue.email) {
-        //       await email.sendAvailabilityUpdateNotification(
-        //         venue.email,
-        //         venue.organizationName || venue.name || 'Venue',
-        //         profile.artistName,
-        //         profile.id,
-        //         [input.date]
-        //       );
-        //     }
-        //   }
-        // }
+        if (input.status === 'available') {
+          const venues = await db.getVenuesWhoFavoritedArtist(profile.id);
+          for (const venue of venues) {
+            if (venue.email) {
+              await email.sendAvailabilityUpdateNotification(
+                venue.email,
+                venue.organizationName || venue.name || 'Venue',
+                profile.artistName,
+                profile.id,
+                [input.date]
+              );
+            }
+          }
+        }
         
         return { success: true };
       }),
