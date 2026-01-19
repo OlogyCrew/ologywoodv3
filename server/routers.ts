@@ -30,6 +30,7 @@ import { contractPdfRouter } from "./routers/contractPdf";
 import { faqRouter } from "./routers/faq";
 import { riderContractsRouter } from "./routers/rider-contracts";
 import { favoritesRouter } from "./routers/favorites";
+import { adminUsersRouter } from "./routers/admin-users";
 import * as contractPdfService from "./contractPdfService";
 import * as contractArchiveService from "./contractArchiveService";
 
@@ -69,6 +70,7 @@ export const appRouter = router({
   support: supportRouter,
   adminSeed: adminSeedRouter,
   supportSeeder: supportSeederRouter,
+  adminUsers: adminUsersRouter,
   aiChat: aiChatRouter,
   helpAndSupport: helpAndSupportRouter,
   contractPdf: contractPdfRouter,
@@ -1167,6 +1169,8 @@ export const appRouter = router({
     // Create checkout session for subscription
     createCheckoutSession: protectedProcedure
       .input(z.object({
+        plan: z.enum(['basic', 'premium']).default('basic'),
+        billingCycle: z.enum(['monthly', 'annual']).default('monthly'),
         successUrl: z.string(),
         cancelUrl: z.string(),
       }))
@@ -1182,6 +1186,8 @@ export const appRouter = router({
 
         // Create checkout session
         const checkoutUrl = await createSubscriptionCheckoutSession({
+          plan: input.plan,
+          billingCycle: input.billingCycle,
           customerId,
           userEmail: ctx.user.email || '',
           userName: ctx.user.name || undefined,

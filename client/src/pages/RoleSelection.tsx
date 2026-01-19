@@ -33,6 +33,12 @@ export default function RoleSelection() {
     }
   }, [isAuthenticated, loading]);
 
+  useEffect(() => {
+    if (!loading && user && (user.role === 'artist' || user.role === 'venue')) {
+      navigate("/dashboard");
+    }
+  }, [user, loading, navigate]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -45,10 +51,13 @@ export default function RoleSelection() {
     return null;
   }
 
-  // If user already has a role, redirect
+  // If user already has a role, show loading while redirecting
   if (user.role === 'artist' || user.role === 'venue') {
-    navigate("/dashboard");
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Redirecting...</p>
+      </div>
+    );
   }
 
   const handleSelectRole = (role: 'artist' | 'venue') => {

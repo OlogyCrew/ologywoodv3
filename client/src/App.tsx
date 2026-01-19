@@ -14,6 +14,7 @@ import VenueOnboarding from "./pages/VenueOnboarding";
 import Availability from "./pages/Availability";
 import RiderTemplates from "./pages/RiderTemplates";
 import Subscription from "./pages/Subscription";
+import SubscriptionPlans from "./pages/SubscriptionPlans";
 import BookingDetail from "./pages/BookingDetail";
 import VenueProfile from "./pages/VenueProfile";
 import ContractDetail from "./pages/ContractDetail";
@@ -32,7 +33,9 @@ import AdminSupportDashboard from "./pages/AdminSupportDashboard";
 import { AIChatWidget } from "./components/AIChatWidget";
 import SupportMetricsDashboard from "./pages/SupportMetricsDashboard";
 import SupportTeamManagement from "./pages/SupportTeamManagement";
-import SLATrackingDashboard from "./pages/SLATrackingDashboard";
+import SLATrackingDashboard from './pages/SLATrackingDashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminUserManagement from './pages/AdminUserManagement';
 import ArtistDashboard from "./pages/ArtistDashboard";
 import VenueDashboard from "./pages/VenueDashboard";
 import VenueArtistDiscovery from "./pages/VenueArtistDiscovery";
@@ -60,6 +63,7 @@ function Router() {
       <Route path="/availability" component={Availability} />
       <Route path="/rider-templates" component={RiderTemplates} />
       <Route path="/subscription" component={Subscription} />
+      <Route path="/pricing" component={SubscriptionPlans} />
       <Route path="/booking/:id" component={BookingDetail} />
       <Route path="/bookings/:id" component={BookingDetail} />
       <Route path="/bookings" component={BookingsList} />
@@ -79,6 +83,8 @@ function Router() {
       <Route path="/admin/support" component={AdminSupportDashboard} />
       <Route path="/admin/support/metrics" component={SupportMetricsDashboard} />
       <Route path="/admin/support-team" component={SupportTeamManagement} />
+      <Route path="/admin" component={AdminDashboard} />
+      <Route path="/admin/users" component={AdminUserManagement} />
       <Route path="/admin/sla-tracking" component={SLATrackingDashboard} />
       <Route path="/artist-dashboard" component={ArtistDashboard} />
       <Route path="/venue-dashboard" component={VenueDashboard} />

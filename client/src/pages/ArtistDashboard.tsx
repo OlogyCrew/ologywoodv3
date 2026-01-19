@@ -22,7 +22,8 @@ export const ArtistDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'contracts' | 'bookings'>('overview');
   
   // Fetch contracts using TRPC
-  const { data: contractsData, isLoading, error } = trpc.contractManagement.getArtistContracts.useQuery();
+  const { data: templatesData, isLoading, error } = trpc.contractManagement.getTemplates.useQuery();
+  const contractsData = templatesData?.templates;
   
   const contracts: Contract[] = contractsData?.map((c: any) => ({
     id: c.id.toString(),

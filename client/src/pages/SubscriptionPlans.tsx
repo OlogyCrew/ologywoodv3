@@ -37,18 +37,29 @@ export default function SubscriptionPlans() {
   const { user } = useAuth();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
 
+  const createCheckout = trpc.subscription.createCheckoutSession.useMutation({
+    onSuccess: (data) => {
+      toast.success("Redirecting to checkout...");
+      window.open(data.checkoutUrl, '_blank');
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to create checkout session");
+    },
+  });
+
   const handleUpgrade = (plan: 'basic' | 'premium') => {
     if (!user) {
       toast.error('Please log in to upgrade');
       return;
     }
 
-    try {
-      const checkoutUrl = `/checkout?plan=${plan}&billing=${billingCycle}`;
-      window.open(checkoutUrl, '_blank');
-    } catch (error) {
-      toast.error('Failed to initiate upgrade');
-    }
+    const origin = window.location.origin;
+    createCheckout.mutate({
+      plan,
+      billingCycle,
+      successUrl: `${origin}/subscription?success=true`,
+      cancelUrl: `${origin}/pricing?canceled=true`,
+    });
   };
 
   const monthlyPrices = { basic: 29, premium: 99 };
@@ -152,8 +163,9 @@ export default function SubscriptionPlans() {
               <Button
                 className="w-full bg-purple-600 hover:bg-purple-700"
                 onClick={() => handleUpgrade('basic')}
+                disabled={createCheckout.isPending}
               >
-                Upgrade to Basic
+                {createCheckout.isPending ? 'Processing...' : 'Upgrade to Basic'}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
               <div className="space-y-3">
@@ -202,8 +214,9 @@ export default function SubscriptionPlans() {
               <Button
                 className="w-full bg-slate-900 hover:bg-slate-800"
                 onClick={() => handleUpgrade('premium')}
+                disabled={createCheckout.isPending}
               >
-                Upgrade to Premium
+                {createCheckout.isPending ? 'Processing...' : 'Upgrade to Premium'}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
               <div className="space-y-3">
@@ -260,45 +273,42 @@ export default function SubscriptionPlans() {
                 </tr>
               </thead>
               <tbody>
-                {features.map((feature, index) => (
-                  <tr
-                    key={index}
-                    className={`border-b border-slate-200 ${index % 2 === 0 ? "bg-slate-50" : ""}`}
-                  >
+                {features.map((feature, idx) => (
+                  <tr key={idx} className={idx % 2 === 0 ? "bg-slate-50" : "bg-white"}>
                     <td className="px-6 py-4 text-sm font-medium text-slate-900">
                       {feature.name}
                     </td>
-                    <td className="px-6 py-4 text-center text-sm text-slate-600">
+                    <td className="px-6 py-4 text-center text-sm text-slate-700">
                       {typeof feature.free === "boolean" ? (
                         feature.free ? (
                           <Check className="h-5 w-5 text-green-600 mx-auto" />
                         ) : (
-                          <X className="h-5 w-5 text-slate-300 mx-auto" />
+                          <X className="h-5 w-5 text-red-600 mx-auto" />
                         )
                       ) : (
-                        <span className="text-slate-700">{feature.free}</span>
+                        feature.free
                       )}
                     </td>
-                    <td className="px-6 py-4 text-center text-sm text-slate-600">
+                    <td className="px-6 py-4 text-center text-sm text-slate-700">
                       {typeof feature.basic === "boolean" ? (
                         feature.basic ? (
                           <Check className="h-5 w-5 text-green-600 mx-auto" />
                         ) : (
-                          <X className="h-5 w-5 text-slate-300 mx-auto" />
+                          <X className="h-5 w-5 text-red-600 mx-auto" />
                         )
                       ) : (
-                        <span className="text-slate-700">{feature.basic}</span>
+                        feature.basic
                       )}
                     </td>
-                    <td className="px-6 py-4 text-center text-sm text-slate-600">
+                    <td className="px-6 py-4 text-center text-sm text-slate-700">
                       {typeof feature.premium === "boolean" ? (
                         feature.premium ? (
                           <Check className="h-5 w-5 text-green-600 mx-auto" />
                         ) : (
-                          <X className="h-5 w-5 text-slate-300 mx-auto" />
+                          <X className="h-5 w-5 text-red-600 mx-auto" />
                         )
                       ) : (
-                        <span className="text-slate-700">{feature.premium}</span>
+                        feature.premium
                       )}
                     </td>
                   </tr>
@@ -314,77 +324,38 @@ export default function SubscriptionPlans() {
             Frequently Asked Questions
           </h2>
           <div className="space-y-6">
-            <div className="bg-white rounded-lg p-6 shadow">
+            <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-semibold text-slate-900 mb-2">
                 Can I change my plan anytime?
               </h3>
               <p className="text-slate-600">
-                Yes! You can upgrade or downgrade your plan at any time through your account
-                settings. Changes take effect at your next billing cycle.
+                Yes! You can upgrade or downgrade your plan at any time. Changes take effect at the next billing cycle.
               </p>
             </div>
-            <div className="bg-white rounded-lg p-6 shadow">
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                What happens if I downgrade?
-              </h3>
-              <p className="text-slate-600">
-                When downgrading, you'll be notified about features that will be restricted. Your
-                data is preserved, but excess items (e.g., riders beyond your new tier limit) will
-                be archived.
-              </p>
-            </div>
-            <div className="bg-white rounded-lg p-6 shadow">
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                Do you offer annual billing discounts?
-              </h3>
-              <p className="text-slate-600">
-                Yes! Annual subscriptions receive a 20% discount. Basic tier is $278/year and
-                Premium is $950/year instead of monthly pricing.
-              </p>
-            </div>
-            <div className="bg-white rounded-lg p-6 shadow">
+            <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-semibold text-slate-900 mb-2">
                 Is there a free trial?
               </h3>
               <p className="text-slate-600">
-                New users get a 14-day free trial of Premium tier to experience all features
-                before committing to a paid plan.
+                Yes! Both Basic and Premium plans include a 7-day free trial. No credit card required to start.
               </p>
             </div>
-            <div className="bg-white rounded-lg p-6 shadow">
+            <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-semibold text-slate-900 mb-2">
                 What payment methods do you accept?
               </h3>
               <p className="text-slate-600">
-                We accept all major credit cards (Visa, Mastercard, American Express) through
-                Stripe. All payments are secure and encrypted.
+                We accept all major credit cards through Stripe. Your payment information is secure and encrypted.
               </p>
             </div>
-          </div>
-        </div>
-
-        {/* CTA Section */}
-        <div className="mt-16 bg-gradient-to-r from-purple-600 to-purple-800 rounded-lg p-12 text-center text-white">
-          <h2 className="text-3xl font-bold mb-4">Ready to get started?</h2>
-          <p className="text-lg mb-8 opacity-90">
-            Join thousands of artists and venues using Ologywood to streamline their bookings
-          </p>
-          <div className="flex gap-4 justify-center">
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={() => handleUpgrade('basic')}
-            >
-              Start with Basic
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="bg-white text-purple-600 hover:bg-slate-100"
-              onClick={() => handleUpgrade('premium')}
-            >
-              Go Premium
-            </Button>
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                Can I cancel anytime?
+              </h3>
+              <p className="text-slate-600">
+                Absolutely! Cancel your subscription anytime with no penalties. You'll have access until the end of your billing period.
+              </p>
+            </div>
           </div>
         </div>
       </div>

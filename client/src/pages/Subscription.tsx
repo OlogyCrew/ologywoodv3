@@ -3,7 +3,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, CreditCard, Calendar, AlertCircle } from "lucide-react";
+import { Check, CreditCard, Calendar, AlertCircle, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { SUBSCRIPTION_PRODUCTS } from "../../../shared/products";
@@ -98,83 +98,126 @@ export default function Subscription() {
 
           {/* Current Subscription Status */}
           {hasActiveSubscription && (
-            <Card>
+            <Card className="border-2 border-primary bg-gradient-to-br from-primary/5 to-transparent">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Current Plan</CardTitle>
-                    <CardDescription>Your active subscription details</CardDescription>
+                    <CardTitle className="text-2xl">Your Active Subscription</CardTitle>
+                    <CardDescription>Manage your subscription settings</CardDescription>
                   </div>
-                  <Badge variant={isTrialing ? "secondary" : "default"}>
-                    {isTrialing ? "Trial" : subscription?.status}
+                  <Badge variant={isTrialing ? "secondary" : "default"} className="text-base py-1 px-3">
+                    {isTrialing ? "Trial Active" : "Active"}
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-muted-foreground" />
-                  <span className="font-medium">{product.name}</span>
-                  <span className="text-muted-foreground">
-                    ${(product.priceMonthly / 100).toFixed(2)}/month
-                  </span>
+              <CardContent className="space-y-6">
+                {/* Plan Details Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Current Plan</p>
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-primary" />
+                      <p className="text-xl font-bold">{product.name}</p>
+                    </div>
+                    <p className="text-lg text-primary font-semibold">
+                      ${(product.priceMonthly / 100).toFixed(2)}/month
+                    </p>
+                  </div>
+                  
+                  {stripeStatus?.currentPeriodEnd && (
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        {isCanceled ? "Expires" : isTrialing ? "Trial Ends" : "Next Billing"}
+                      </p>
+                      <p className="text-xl font-bold">
+                        {new Date(stripeStatus.currentPeriodEnd).toLocaleDateString()}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {isCanceled ? "Cancellation date" : isTrialing ? "Trial period" : "Billing cycle"}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Status</p>
+                    <p className="text-xl font-bold capitalize">
+                      {isCanceled ? "Canceling" : isTrialing ? "On Trial" : "Active"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {isCanceled ? "Ends soon" : isTrialing ? "No charges yet" : "Recurring"}
+                    </p>
+                  </div>
                 </div>
 
-                {stripeStatus?.currentPeriodEnd && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      {isCanceled ? "Expires" : isTrialing ? "Trial ends" : "Renews"} on{" "}
-                      {new Date(stripeStatus.currentPeriodEnd).toLocaleDateString()}
-                    </span>
-                  </div>
-                )}
-
+                {/* Status Alerts */}
                 {isTrialing && (
-                  <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-md">
-                    <AlertCircle className="h-5 w-5 text-blue-600" />
-                    <span className="text-sm text-blue-900">
-                      You're currently in your {product.trialDays}-day free trial. You won't be charged until the trial ends.
-                    </span>
+                  <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <AlertCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-blue-900">Free Trial Active</p>
+                      <p className="text-sm text-blue-800 mt-1">
+                        You are currently in your {product.trialDays}-day free trial. No charges will be applied until the trial period ends.
+                      </p>
+                    </div>
                   </div>
                 )}
 
                 {isCanceled && (
-                  <div className="flex items-center gap-2 p-3 bg-orange-50 rounded-md">
-                    <AlertCircle className="h-5 w-5 text-orange-600" />
-                    <span className="text-sm text-orange-900">
-                      Your subscription is set to cancel at the end of the billing period.
-                    </span>
+                  <div className="flex items-start gap-3 p-4 bg-orange-50 rounded-lg border border-orange-200">
+                    <AlertCircle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-orange-900">Cancellation Pending</p>
+                      <p className="text-sm text-orange-800 mt-1">
+                        Your subscription will end on {new Date(stripeStatus?.currentPeriodEnd || '').toLocaleDateString()}. You can reactivate your subscription anytime.
+                      </p>
+                    </div>
                   </div>
                 )}
 
-                <div className="flex gap-2 pt-4">
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-2 flex-wrap">
                   {isCanceled ? (
                     <Button
+                      size="lg"
                       onClick={() => reactivateSubscription.mutate()}
                       disabled={reactivateSubscription.isPending}
+                      className="flex-1 md:flex-none"
                     >
                       {reactivateSubscription.isPending ? "Reactivating..." : "Reactivate Subscription"}
                     </Button>
                   ) : (
-                    <Button
-                      variant="outline"
-                      onClick={() => cancelSubscription.mutate()}
-                      disabled={cancelSubscription.isPending}
-                    >
-                      {cancelSubscription.isPending ? "Canceling..." : "Cancel Subscription"}
-                    </Button>
+                    <>
+                      <Button
+                        size="lg"
+                        onClick={() => navigate("/pricing")}
+                        className="flex-1"
+                      >
+                        Upgrade to Premium
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={() => cancelSubscription.mutate()}
+                        disabled={cancelSubscription.isPending}
+                      >
+                        {cancelSubscription.isPending ? "Canceling..." : "Cancel Subscription"}
+                      </Button>
+                    </>
                   )}
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Subscription Plan */}
+          {/* No Subscription - Offer Plan */}
           {!hasActiveSubscription && (
             <Card className="border-2 border-primary">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-2xl">{product.name}</CardTitle>
+                  <div>
+                    <CardTitle className="text-2xl">{product.name}</CardTitle>
+                    <CardDescription>{product.description}</CardDescription>
+                  </div>
                   <div className="text-right">
                     <div className="text-3xl font-bold">
                       ${(product.priceMonthly / 100).toFixed(0)}
@@ -182,7 +225,6 @@ export default function Subscription() {
                     <div className="text-sm text-muted-foreground">per month</div>
                   </div>
                 </div>
-                <CardDescription>{product.description}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-3">
@@ -194,7 +236,7 @@ export default function Subscription() {
                   ))}
                 </div>
 
-                <div className="p-4 bg-blue-50 rounded-md">
+                <div className="p-4 bg-blue-50 rounded-md border border-blue-200">
                   <p className="text-sm text-blue-900 font-medium">
                     🎉 {product.trialDays}-day free trial included!
                   </p>
@@ -231,7 +273,7 @@ export default function Subscription() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {product.features.map((feature, index) => (
-                  <div key={index} className="flex items-start gap-3 p-3 rounded-md hover:bg-accent">
+                  <div key={index} className="flex items-start gap-3 p-3 rounded-md hover:bg-accent transition-colors">
                     <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                     <span className="text-sm">{feature}</span>
                   </div>

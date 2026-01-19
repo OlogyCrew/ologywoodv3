@@ -11,8 +11,10 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Music, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { toast } from "sonner";
+import { useEffect } from "react";
 
-export default function ArtistOnboarding() {
+// Separate component for the onboarding form to avoid hooks order issues
+function ArtistOnboardingForm() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
@@ -174,30 +176,22 @@ export default function ArtistOnboarding() {
                 <CardDescription>Step {currentStep} of {totalSteps}</CardDescription>
               </div>
             </div>
-            <Badge variant="secondary">{user?.name}</Badge>
+            <Music className="h-8 w-8 text-primary" />
           </div>
           <Progress value={progress} className="h-2" />
         </CardHeader>
 
-        <CardContent className="space-y-6">
-          {/* Step 1: Basic Information */}
+        <CardContent>
           {currentStep === 1 && (
-            <div className="space-y-4 animate-fade-in">
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Let's start with the basics. Tell us about yourself as an artist.
-                </p>
-              </div>
-
+            <div className="space-y-6">
               <div>
                 <Label htmlFor="artistName">Artist Name *</Label>
                 <Input
                   id="artistName"
                   value={artistName}
                   onChange={(e) => setArtistName(e.target.value)}
-                  placeholder="Your stage name or band name"
-                  className="mt-1"
+                  placeholder="Your stage name"
+                  className="mt-2"
                 />
               </div>
 
@@ -207,8 +201,8 @@ export default function ArtistOnboarding() {
                   id="location"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  placeholder="City, State or Region"
-                  className="mt-1"
+                  placeholder="City, State"
+                  className="mt-2"
                 />
               </div>
 
@@ -218,160 +212,128 @@ export default function ArtistOnboarding() {
                   id="bio"
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  placeholder="Tell venues about your music, experience, and what makes you unique..."
-                  rows={5}
-                  className="mt-1"
+                  placeholder="Tell us about yourself..."
+                  rows={4}
+                  className="mt-2"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  This will be displayed on your public profile
-                </p>
               </div>
 
               <div>
-                <Label htmlFor="photo">Profile Photo</Label>
-                <div className="mt-2 flex items-center gap-4">
-                  {profilePhotoPreview ? (
-                    <div className="relative">
-                      <img 
-                        src={profilePhotoPreview} 
-                        alt="Profile preview" 
-                        className="h-24 w-24 rounded-full object-cover border-2 border-primary"
+                <Label htmlFor="profilePhoto">Profile Photo</Label>
+                <div className="mt-2 space-y-2">
+                  <Input
+                    id="profilePhoto"
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                  />
+                  {profilePhotoPreview && (
+                    <div className="flex gap-4">
+                      <img
+                        src={profilePhotoPreview}
+                        alt="Preview"
+                        className="h-32 w-32 object-cover rounded"
                       />
-                      {profilePhotoUrl && (
-                        <div className="absolute -top-1 -right-1 bg-green-500 rounded-full p-1">
-                          <Check className="h-3 w-3 text-white" />
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="h-24 w-24 rounded-full bg-muted flex items-center justify-center">
-                      <Music className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <Input
-                      id="photo"
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoChange}
-                      className="mt-1"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Max 5MB. JPG, PNG, or GIF.
-                    </p>
-                    {profilePhoto && !profilePhotoUrl && (
-                      <Button 
-                        type="button"
-                        size="sm" 
+                      <Button
                         onClick={handleUploadPhoto}
                         disabled={uploadPhoto.isPending}
-                        className="mt-2"
+                        variant="outline"
                       >
                         {uploadPhoto.isPending ? "Uploading..." : "Upload Photo"}
                       </Button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           )}
 
-          {/* Step 2: Genre & Performance Details */}
           {currentStep === 2 && (
-            <div className="space-y-4 animate-fade-in">
+            <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold mb-4">Performance Details</h3>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Help venues understand your style and requirements.
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="genre">Genres</Label>
-                <div className="flex gap-2 mt-1">
+                <Label htmlFor="genreInput">Genres</Label>
+                <div className="flex gap-2 mt-2">
                   <Input
-                    id="genre"
+                    id="genreInput"
                     value={genreInput}
                     onChange={(e) => setGenreInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddGenre())}
-                    placeholder="e.g., Jazz, Rock, Hip-Hop"
+                    placeholder="Enter a genre"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddGenre();
+                      }
+                    }}
                   />
-                  <Button type="button" onClick={handleAddGenre} variant="outline">
+                  <Button onClick={handleAddGenre} variant="outline">
                     Add
                   </Button>
                 </div>
-                {genres.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {genres.map((genre) => (
-                      <Badge key={genre} variant="secondary" className="cursor-pointer" onClick={() => handleRemoveGenre(genre)}>
-                        {genre} ×
-                      </Badge>
-                    ))}
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {genres.map((genre) => (
+                    <Badge key={genre} variant="secondary">
+                      {genre}
+                      <button
+                        onClick={() => handleRemoveGenre(genre)}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        ×
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="feeMin">Fee Range Min ($)</Label>
+                  <Label htmlFor="feeRangeMin">Min Fee ($)</Label>
                   <Input
-                    id="feeMin"
+                    id="feeRangeMin"
                     type="number"
                     value={feeRangeMin}
                     onChange={(e) => setFeeRangeMin(e.target.value)}
-                    placeholder="500"
-                    className="mt-1"
+                    placeholder="0"
+                    className="mt-2"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="feeMax">Fee Range Max ($)</Label>
+                  <Label htmlFor="feeRangeMax">Max Fee ($)</Label>
                   <Input
-                    id="feeMax"
+                    id="feeRangeMax"
                     type="number"
                     value={feeRangeMax}
                     onChange={(e) => setFeeRangeMax(e.target.value)}
-                    placeholder="2000"
-                    className="mt-1"
+                    placeholder="0"
+                    className="mt-2"
                   />
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="partySize">Touring Party Size</Label>
+                <Label htmlFor="touringPartySize">Touring Party Size</Label>
                 <Input
-                  id="partySize"
+                  id="touringPartySize"
                   type="number"
                   value={touringPartySize}
                   onChange={(e) => setTouringPartySize(e.target.value)}
                   min="1"
-                  className="mt-1"
+                  className="mt-2"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  How many people travel with you (including yourself)
-                </p>
               </div>
             </div>
           )}
 
-          {/* Step 3: Social Links */}
           {currentStep === 3 && (
-            <div className="space-y-4 animate-fade-in">
+            <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold mb-4">Connect Your Socials</h3>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Add your social media and music platform links so venues can learn more about you.
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="website">Website</Label>
+                <Label htmlFor="websiteUrl">Website URL</Label>
                 <Input
-                  id="website"
+                  id="websiteUrl"
                   type="url"
                   value={websiteUrl}
                   onChange={(e) => setWebsiteUrl(e.target.value)}
                   placeholder="https://yourwebsite.com"
-                  className="mt-1"
+                  className="mt-2"
                 />
               </div>
 
@@ -379,11 +341,10 @@ export default function ArtistOnboarding() {
                 <Label htmlFor="instagram">Instagram</Label>
                 <Input
                   id="instagram"
-                  type="url"
                   value={instagram}
                   onChange={(e) => setInstagram(e.target.value)}
-                  placeholder="https://instagram.com/yourusername"
-                  className="mt-1"
+                  placeholder="@yourinstagram"
+                  className="mt-2"
                 />
               </div>
 
@@ -391,11 +352,10 @@ export default function ArtistOnboarding() {
                 <Label htmlFor="facebook">Facebook</Label>
                 <Input
                   id="facebook"
-                  type="url"
                   value={facebook}
                   onChange={(e) => setFacebook(e.target.value)}
-                  placeholder="https://facebook.com/yourpage"
-                  className="mt-1"
+                  placeholder="facebook.com/yourpage"
+                  className="mt-2"
                 />
               </div>
 
@@ -403,11 +363,10 @@ export default function ArtistOnboarding() {
                 <Label htmlFor="youtube">YouTube</Label>
                 <Input
                   id="youtube"
-                  type="url"
                   value={youtube}
                   onChange={(e) => setYoutube(e.target.value)}
-                  placeholder="https://youtube.com/@yourchannel"
-                  className="mt-1"
+                  placeholder="youtube.com/@yourchannel"
+                  className="mt-2"
                 />
               </div>
 
@@ -415,21 +374,19 @@ export default function ArtistOnboarding() {
                 <Label htmlFor="spotify">Spotify</Label>
                 <Input
                   id="spotify"
-                  type="url"
                   value={spotify}
                   onChange={(e) => setSpotify(e.target.value)}
-                  placeholder="https://open.spotify.com/artist/..."
-                  className="mt-1"
+                  placeholder="spotify.com/artist/..."
+                  className="mt-2"
                 />
               </div>
             </div>
           )}
 
-          {/* Navigation Buttons */}
-          <div className="flex justify-between pt-6 border-t">
+          <div className="flex justify-between gap-4 mt-8">
             <Button
-              variant="outline"
               onClick={handleBack}
+              variant="outline"
               disabled={currentStep === 1}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -443,14 +400,8 @@ export default function ArtistOnboarding() {
               </Button>
             ) : (
               <Button onClick={handleSubmit} disabled={createProfile.isPending}>
-                {createProfile.isPending ? (
-                  "Creating..."
-                ) : (
-                  <>
-                    <Check className="h-4 w-4 mr-2" />
-                    Complete Setup
-                  </>
-                )}
+                {createProfile.isPending ? "Creating..." : "Create Profile"}
+                <Check className="h-4 w-4 ml-2" />
               </Button>
             )}
           </div>
@@ -458,4 +409,64 @@ export default function ArtistOnboarding() {
       </Card>
     </div>
   );
+}
+
+// Main component that handles access control
+export default function ArtistOnboarding() {
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check if artist already has a profile
+  const { data: artistProfile } = trpc.artist.getMyProfile.useQuery(undefined, {
+    enabled: !!user && user.role === 'artist',
+  });
+
+  // Redirect if artist already has a profile
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    
+    if (user.role !== 'artist') {
+      setIsLoading(false);
+      return;
+    }
+    
+    if (artistProfile) {
+      navigate('/dashboard');
+    } else {
+      setIsLoading(false);
+    }
+  }, [artistProfile, user, navigate]);
+
+  // Show loading state while checking if profile exists
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  // Redirect non-artists
+  if (!user || user.role !== 'artist') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Access Denied</CardTitle>
+            <CardDescription>Only artists can access the onboarding page.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => navigate('/dashboard')} className="w-full">
+              Go to Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return <ArtistOnboardingForm />;
 }

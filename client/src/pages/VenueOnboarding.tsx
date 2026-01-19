@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Building2, ArrowRight, Check } from "lucide-react";
 import { toast } from "sonner";
 
-export default function VenueOnboarding() {
+// Separate component for the onboarding form to avoid hooks order issues
+function VenueOnboardingForm() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
@@ -199,4 +200,64 @@ export default function VenueOnboarding() {
       </Card>
     </div>
   );
+}
+
+// Main component that handles access control
+export default function VenueOnboarding() {
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check if venue already has a profile
+  const { data: venueProfile } = trpc.venue.getMyProfile.useQuery(undefined, {
+    enabled: !!user && user.role === 'venue',
+  });
+
+  // Redirect if venue already has a profile
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    
+    if (user.role !== 'venue') {
+      setIsLoading(false);
+      return;
+    }
+    
+    if (venueProfile) {
+      navigate('/dashboard');
+    } else {
+      setIsLoading(false);
+    }
+  }, [venueProfile, user, navigate]);
+
+  // Show loading state while checking if profile exists
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  // Redirect non-venues
+  if (!user || user.role !== 'venue') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Access Denied</CardTitle>
+            <CardDescription>Only venues can access the onboarding page.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => navigate('/dashboard')} className="w-full">
+              Go to Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return <VenueOnboardingForm />;
 }

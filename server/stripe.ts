@@ -41,6 +41,8 @@ export async function getOrCreateStripeCustomer(params: {
  * Create a Stripe Checkout Session for artist subscription
  */
 export async function createSubscriptionCheckoutSession(params: {
+  plan: 'basic' | 'premium';
+  billingCycle: 'monthly' | 'annual';
   customerId: string;
   userEmail: string;
   userName?: string;
@@ -48,36 +50,18 @@ export async function createSubscriptionCheckoutSession(params: {
   successUrl: string;
   cancelUrl: string;
 }): Promise<string> {
-  const product = SUBSCRIPTION_PRODUCTS.ARTIST_BASIC;
+  // Get the product based on plan
+  const product = params.plan === 'premium' 
+    ? SUBSCRIPTION_PRODUCTS.ARTIST_PREMIUM 
+    : SUBSCRIPTION_PRODUCTS.ARTIST_BASIC;
 
-  // Create or get the price
-  const prices = await stripe.prices.list({
-    lookup_keys: ['artist_basic_monthly'],
-    limit: 1,
-  });
+  // Get the price ID based on billing cycle
+  const priceId = params.billingCycle === 'annual'
+    ? product.stripePriceIdAnnual
+    : product.stripePriceIdMonthly;
 
-  let priceId: string;
-  
-  if (prices.data.length > 0) {
-    priceId = prices.data[0]!.id;
-  } else {
-    // Create the product and price if they don't exist
-    const stripeProduct = await stripe.products.create({
-      name: product.name,
-      description: product.description,
-    });
-
-    const stripePrice = await stripe.prices.create({
-      product: stripeProduct.id,
-      unit_amount: product.priceMonthly,
-      currency: product.currency,
-      recurring: {
-        interval: product.interval,
-      },
-      lookup_key: 'artist_basic_monthly',
-    });
-
-    priceId = stripePrice.id;
+  if (!priceId) {
+    throw new Error(`No price ID configured for ${params.plan} ${params.billingCycle}`);
   }
 
   const session = await stripe.checkout.sessions.create({
@@ -95,55 +79,101 @@ export async function createSubscriptionCheckoutSession(params: {
       trial_period_days: product.trialDays,
       metadata: {
         userId: params.userId,
-        plan: 'artist_basic',
+        plan: params.plan,
+        billingCycle: params.billingCycle,
       },
     },
     metadata: {
       userId: params.userId,
-      customer_email: params.userEmail,
-      customer_name: params.userName || '',
+      userEmail: params.userEmail,
+      userName: params.userName || '',
+      plan: params.plan,
+      billingCycle: params.billingCycle,
     },
     success_url: params.successUrl,
     cancel_url: params.cancelUrl,
     allow_promotion_codes: true,
   });
 
-  return session.url!;
+  return session.url || '';
 }
 
 /**
  * Get subscription status from Stripe
  */
 export async function getSubscriptionStatus(subscriptionId: string) {
-  try {
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-    const subData = subscription as any;
-    return {
-      status: subscription.status,
-      currentPeriodEnd: subData.current_period_end ? new Date(subData.current_period_end * 1000) : new Date(),
-      cancelAtPeriodEnd: subData.cancel_at_period_end || false,
-      trialEnd: subData.trial_end ? new Date(subData.trial_end * 1000) : null,
-    };
-  } catch (error) {
-    console.error('Error fetching subscription:', error);
-    return null;
-  }
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  return {
+    status: subscription.status,
+    currentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
+    cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    canceledAt: subscription.canceled_at ? new Date(subscription.canceled_at * 1000) : null,
+  };
 }
 
 /**
- * Cancel a subscription at period end
+ * Cancel a subscription
  */
 export async function cancelSubscription(subscriptionId: string) {
-  return await stripe.subscriptions.update(subscriptionId, {
+  const subscription = await stripe.subscriptions.update(subscriptionId, {
     cancel_at_period_end: true,
   });
+  return subscription;
 }
 
 /**
  * Reactivate a canceled subscription
  */
 export async function reactivateSubscription(subscriptionId: string) {
-  return await stripe.subscriptions.update(subscriptionId, {
+  const subscription = await stripe.subscriptions.update(subscriptionId, {
     cancel_at_period_end: false,
   });
+  return subscription;
+}
+
+/**
+ * Handle Stripe webhook events
+ */
+export async function handleWebhookEvent(event: Stripe.Event) {
+  switch (event.type) {
+    case 'checkout.session.completed': {
+      const session = event.data.object as Stripe.Checkout.Session;
+      console.log('[Webhook] Checkout session completed:', session.id);
+      return { success: true };
+    }
+
+    case 'customer.subscription.created': {
+      const subscription = event.data.object as Stripe.Subscription;
+      console.log('[Webhook] Subscription created:', subscription.id);
+      return { success: true };
+    }
+
+    case 'customer.subscription.updated': {
+      const subscription = event.data.object as Stripe.Subscription;
+      console.log('[Webhook] Subscription updated:', subscription.id);
+      return { success: true };
+    }
+
+    case 'customer.subscription.deleted': {
+      const subscription = event.data.object as Stripe.Subscription;
+      console.log('[Webhook] Subscription deleted:', subscription.id);
+      return { success: true };
+    }
+
+    case 'invoice.paid': {
+      const invoice = event.data.object as Stripe.Invoice;
+      console.log('[Webhook] Invoice paid:', invoice.id);
+      return { success: true };
+    }
+
+    case 'invoice.payment_failed': {
+      const invoice = event.data.object as Stripe.Invoice;
+      console.log('[Webhook] Invoice payment failed:', invoice.id);
+      return { success: true };
+    }
+
+    default:
+      console.log('[Webhook] Unhandled event type:', event.type);
+      return { success: true };
+  }
 }

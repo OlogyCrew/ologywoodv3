@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Save, Bell, Lock, CreditCard, Calendar, MapPin } from 'lucide-react';
+import { useAuth } from '@/_core/hooks/useAuth';
+import { useLocation } from 'wouter';
 
 interface VenueSettings {
   venueName: string;
@@ -27,6 +29,49 @@ const AMENITIES = [
 ];
 
 export default function VenueSettings() {
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
+
+  // Check if user is a venue
+  if (user?.role !== 'venue' && user?.role !== 'admin') {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+      }}>
+        <div style={{
+          maxWidth: '400px',
+          textAlign: 'center',
+          padding: '40px',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
+          backgroundColor: '#f9fafb',
+        }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '10px' }}>Venue Access Required</h2>
+          <p style={{ color: '#6b7280', marginBottom: '20px' }}>
+            This page is only available for venue accounts.
+          </p>
+          <button
+            onClick={() => navigate('/dashboard')}
+            style={{
+              backgroundColor: '#7c3aed',
+              color: 'white',
+              padding: '10px 20px',
+              borderRadius: '6px',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '14px',
+            }}
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
   const [settings, setSettings] = useState<VenueSettings>({
     venueName: 'Main Hall Venue',
     location: 'New York, NY',

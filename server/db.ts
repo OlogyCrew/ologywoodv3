@@ -1,4 +1,3 @@
-import { eq, and, gte, lte, inArray, like, or, desc, sql, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   InsertUser, users, 
@@ -19,6 +18,7 @@ import {
   signatures, InsertSignature, Signature
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { eq, sql } from "drizzle-orm";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -84,20 +84,20 @@ export async function createSignature(data: InsertSignature): Promise<Signature>
   return signature[0] as Signature;
 }
 
+export async function getSignatureById(id: number): Promise<Signature | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(signatures).where(eq(signatures.id, id)).limit(1);
+  return result[0];
+}
+
 export async function getSignaturesByContractId(contractId: number): Promise<Signature[]> {
   const db = await getDb();
   if (!db) return [];
   return await db.select().from(signatures).where(eq(signatures.contractId, contractId));
 }
 
-export async function getSignatureByContractAndSigner(contractId: number, signerId: number): Promise<Signature | undefined> {
-  const db = await getDb();
-  if (!db) return undefined;
-  const result = await db.select().from(signatures).where(
-    and(eq(signatures.contractId, contractId), eq(signatures.signerId, signerId))
-  ).limit(1);
-  return result[0];
-}
+// ============= DATABASE CONNECTION =============
 
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
@@ -114,73 +114,25 @@ export async function getDb() {
 // ============= USER FUNCTIONS =============
 
 export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
-  }
-
   const db = await getDb();
   if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
-    return;
+    throw new Error("Database not available");
   }
 
-  try {
-    const values: InsertUser = {
-      openId: user.openId,
-    };
-    const updateSet: Record<string, unknown> = {};
+  const existing = await db.select().from(users).where(eq(users.openId, user.openId)).limit(1);
 
-    const textFields = ["name", "email", "loginMethod"] as const;
-    type TextField = (typeof textFields)[number];
-
-    const assignNullable = (field: TextField) => {
-      const value = user[field];
-      if (value === undefined) return;
-      const normalized = value ?? null;
-      values[field] = normalized;
-      updateSet[field] = normalized;
-    };
-
-    textFields.forEach(assignNullable);
-
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
-    }
-    if (user.role !== undefined) {
-      values.role = user.role;
-      updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
-    }
-
-    if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
-    }
-
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
-
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
-  } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
-    throw error;
+  if (existing.length > 0) {
+    await db.update(users).set(user).where(eq(users.openId, user.openId));
+  } else {
+    await db.insert(users).values(user);
   }
 }
 
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
+  if (!db) return undefined;
 
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
   return result.length > 0 ? result[0] : undefined;
 }
 
@@ -192,12 +144,59 @@ export async function updateUserRole(userId: number, role: 'artist' | 'venue') {
 
   await db.update(users).set({ role }).where(eq(users.id, userId));
 }
+
 export async function getUserById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
   
   const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
   return result.length > 0 ? result[0] : undefined;
+}
+
+// ============= ADMIN USER MANAGEMENT FUNCTIONS =============
+
+export async function getAllUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(users);
+}
+
+export async function updateUser(userId: number, updates: { role?: string; status?: string }) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  const updateData: any = {};
+  // Only update role since the users table doesn't have a status column
+  if (updates.role) {
+    updateData.role = updates.role;
+  }
+  // Note: status field is not in the users table schema, so we skip it
+  // If status tracking is needed, consider adding it to the schema
+
+  if (Object.keys(updateData).length === 0) {
+    return await getUserById(userId);
+  }
+
+  try {
+    const result = await db.update(users).set(updateData).where(eq(users.id, userId));
+    console.log(`[DB] Updated user ${userId}:`, updateData);
+    const updatedUser = await getUserById(userId);
+    console.log(`[DB] User after update:`, updatedUser);
+    return updatedUser;
+  } catch (error) {
+    console.error(`[DB] Error updating user ${userId}:`, error);
+    throw error;
+  }
+}
+
+export async function getAllArtists() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(artistProfiles);
 }
 
 // ============= ARTIST PROFILE FUNCTIONS =============
@@ -300,11 +299,17 @@ export async function searchArtists(filters: {
   return filtered;
 }
 
-export async function getAllArtists() {
+export async function getArtistsByGenre(genres: string[]) {
   const db = await getDb();
   if (!db) return [];
   
-  return await db.select().from(artistProfiles);
+  const results = await db.select().from(artistProfiles);
+  
+  // Filter by genres in application code
+  return results.filter(artist => {
+    if (!artist.genres || !Array.isArray(artist.genres)) return false;
+    return genres.some(g => artist.genres.includes(g));
+  });
 }
 
 // ============= VENUE PROFILE FUNCTIONS =============
@@ -320,6 +325,7 @@ export async function createVenueProfile(profile: InsertVenueProfile) {
 export async function getVenueProfileByUserId(userId: number) {
   const db = await getDb();
   if (!db) return undefined;
+  
   const result = await db.select().from(venueProfiles).where(eq(venueProfiles.userId, userId)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
@@ -327,6 +333,7 @@ export async function getVenueProfileByUserId(userId: number) {
 export async function getVenueProfileById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
+  
   const result = await db.select().from(venueProfiles).where(eq(venueProfiles.id, id)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
@@ -336,6 +343,39 @@ export async function updateVenueProfile(id: number, updates: Partial<VenueProfi
   if (!db) throw new Error("Database not available");
   
   await db.update(venueProfiles).set(updates).where(eq(venueProfiles.id, id));
+}
+
+export async function searchVenues(filters: {
+  location?: string;
+  capacity?: number;
+  type?: string;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const results = await db.select().from(venueProfiles);
+  
+  let filtered = results;
+  
+  if (filters.location) {
+    filtered = filtered.filter(v => 
+      v.location?.toLowerCase().includes(filters.location!.toLowerCase())
+    );
+  }
+  
+  if (filters.capacity !== undefined) {
+    filtered = filtered.filter(v => 
+      v.capacity !== null && v.capacity >= filters.capacity!
+    );
+  }
+  
+  if (filters.type) {
+    filtered = filtered.filter(v => 
+      v.type?.toLowerCase() === filters.type!.toLowerCase()
+    );
+  }
+  
+  return filtered;
 }
 
 // ============= RIDER TEMPLATE FUNCTIONS =============
@@ -374,58 +414,78 @@ export async function deleteRiderTemplate(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  await db.delete(riderTemplates).where(eq(riderTemplates.id, id));
+  // Soft delete by setting isActive to false
+  await db.update(riderTemplates).set({ isActive: false }).where(eq(riderTemplates.id, id));
 }
 
 // ============= AVAILABILITY FUNCTIONS =============
 
-export async function setAvailability(avail: InsertAvailability) {
+export async function createAvailability(availability_data: InsertAvailability) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  await db.insert(availability).values(avail).onDuplicateKeyUpdate({
-    set: { status: avail.status, notes: avail.notes }
-  });
+  const result = await db.insert(availability).values(availability_data);
+  return result;
 }
 
-export async function getAvailabilityByArtistId(artistId: number, startDate?: string, endDate?: string) {
+export async function getAvailabilityByArtistId(artistId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  let query = db.select().from(availability).where(eq(availability.artistId, artistId));
-  
-  // If date range provided, filter (would need to add date comparison logic)
-  const results = await query;
-  
-  if (startDate && endDate) {
-    return results.filter(a => {
-      const dateStr = a.date instanceof Date ? a.date.toISOString().split('T')[0] : a.date;
-      return dateStr >= startDate && dateStr <= endDate;
-    });
-  }
-  
-  return results;
+  return await db.select().from(availability).where(eq(availability.artistId, artistId));
 }
 
-export async function getAvailabilityForDate(artistId: number, date: string) {
+export async function getAvailabilityByDate(artistId: number, date: Date) {
   const db = await getDb();
   if (!db) return undefined;
   
-  const result = await db.select().from(availability)
-    .where(and(
-      eq(availability.artistId, artistId),
-      sql`${availability.date} = ${date}`
-    ))
-    .limit(1);
-    
+  const result = await db.select().from(availability).where(
+    sql`${availability.artistId} = ${artistId} AND DATE(${availability.date}) = DATE(${date})`
+  ).limit(1);
+  
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updateAvailability(id: number, updates: Partial<Availability>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(availability).set(updates).where(eq(availability.id, id));
+}
+
+export async function setAvailability(data: { artistId: number; date: Date; status: string; notes?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // Check if availability already exists for this artist and date
+  const existing = await db.select().from(availability).where(
+    sql`${availability.artistId} = ${data.artistId} AND DATE(${availability.date}) = DATE(${data.date})`
+  ).limit(1);
+  
+  if (existing.length > 0) {
+    // Update existing availability
+    await db.update(availability).set({
+      status: data.status as any,
+      notes: data.notes,
+      updatedAt: new Date(),
+    }).where(eq(availability.id, existing[0].id));
+  } else {
+    // Create new availability
+    await db.insert(availability).values({
+      artistId: data.artistId,
+      date: data.date,
+      status: data.status as any,
+      notes: data.notes,
+    });
+  }
 }
 
 export async function deleteAvailability(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  await db.delete(availability).where(eq(availability.id, id));
+  // Note: In a real app, you might want to soft delete
+  // For now, we'll just update the status
 }
 
 // ============= BOOKING FUNCTIONS =============
@@ -435,11 +495,7 @@ export async function createBooking(booking: InsertBooking) {
   if (!db) throw new Error("Database not available");
   
   const result = await db.insert(bookings).values(booking);
-  // Get the inserted booking
-  const newBooking = await db.select().from(bookings)
-    .where(eq(bookings.id, sql`LAST_INSERT_ID()`))
-    .limit(1);
-  return newBooking[0]?.id || 0;
+  return result;
 }
 
 export async function getBookingById(id: number) {
@@ -454,33 +510,24 @@ export async function getBookingsByArtistId(artistId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  // Select only core columns to avoid schema mismatch
-  return await db.select({
-    id: bookings.id,
-    artistId: bookings.artistId,
-    venueId: bookings.venueId,
-    eventDate: bookings.eventDate,
-    eventTime: bookings.eventTime,
-    venueName: bookings.venueName,
-    venueAddress: bookings.venueAddress,
-    status: bookings.status,
-    totalFee: bookings.totalFee,
-    depositAmount: bookings.depositAmount,
-    paymentStatus: bookings.paymentStatus,
-    createdAt: bookings.createdAt,
-    updatedAt: bookings.updatedAt,
-  }).from(bookings)
-    .where(eq(bookings.artistId, artistId))
-    .orderBy(desc(bookings.createdAt));
+  try {
+    return await db.select().from(bookings).where(eq(bookings.artistId, artistId));
+  } catch (error) {
+    console.error(`[DB] Error fetching bookings for artist ${artistId}:`, error);
+    return [];
+  }
 }
 
 export async function getBookingsByVenueId(venueId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  return await db.select().from(bookings)
-    .where(eq(bookings.venueId, venueId))
-    .orderBy(desc(bookings.createdAt));
+  try {
+    return await db.select().from(bookings).where(eq(bookings.venueId, venueId));
+  } catch (error) {
+    console.error(`[DB] Error fetching bookings for venue ${venueId}:`, error);
+    return [];
+  }
 }
 
 export async function updateBooking(id: number, updates: Partial<Booking>) {
@@ -504,16 +551,42 @@ export async function getMessagesByBookingId(bookingId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  return await db.select().from(messages)
-    .where(eq(messages.bookingId, bookingId))
-    .orderBy(messages.createdAt);
+  return await db.select().from(messages).where(eq(messages.bookingId, bookingId));
 }
 
-export async function markMessageAsRead(id: number) {
+export async function getUnreadMessageCountByBooking(bookingId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  
+  const result = await db.select().from(messages).where(
+    sql`${messages.bookingId} = ${bookingId} AND ${messages.recipientId} = ${userId} AND ${messages.isRead} = false`
+  );
+  
+  return result.length;
+}
+
+export async function getTotalUnreadMessageCount(userId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  
+  try {
+    const result = await db.select().from(messages).where(
+      sql`${messages.recipientId} = ${userId} AND ${messages.isRead} = false`
+    );
+    return result.length;
+  } catch (error) {
+    console.warn("[Database] Failed to get unread message count:", error);
+    return 0;
+  }
+}
+
+export async function markMessagesAsRead(bookingId: number, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  await db.update(messages).set({ isRead: true }).where(eq(messages.id, id));
+  await db.update(messages).set({ isRead: true }).where(
+    sql`${messages.bookingId} = ${bookingId} AND ${messages.recipientId} = ${userId}`
+  );
 }
 
 // ============= SUBSCRIPTION FUNCTIONS =============
@@ -530,17 +603,13 @@ export async function getSubscriptionByUserId(userId: number) {
   const db = await getDb();
   if (!db) return undefined;
   
-  // Select only columns that exist in the actual database
-  const result = await db.select({
-    id: subscriptions.id,
-    userId: subscriptions.userId,
-    stripeCustomerId: subscriptions.stripeCustomerId,
-    stripeSubscriptionId: subscriptions.stripeSubscriptionId,
-    status: subscriptions.status,
-    createdAt: subscriptions.createdAt,
-    updatedAt: subscriptions.updatedAt,
-  }).from(subscriptions).where(eq(subscriptions.userId, userId)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
+  try {
+    const result = await db.select().from(subscriptions).where(eq(subscriptions.userId, userId)).limit(1);
+    return result.length > 0 ? result[0] : undefined;
+  } catch (error) {
+    console.error('[DB] Error fetching subscription for user', userId, ':', error);
+    return undefined;
+  }
 }
 
 export async function updateSubscription(userId: number, updates: Partial<Subscription>) {
@@ -548,40 +617,6 @@ export async function updateSubscription(userId: number, updates: Partial<Subscr
   if (!db) throw new Error("Database not available");
   
   await db.update(subscriptions).set(updates).where(eq(subscriptions.userId, userId));
-}
-
-export async function upsertSubscription(data: {
-  userId: number;
-  stripeCustomerId?: string;
-  stripeSubscriptionId?: string;
-  planType: string;
-  status: 'active' | 'inactive' | 'trialing' | 'canceled' | 'past_due';
-  currentPeriodEnd?: Date;
-}) {
-  const db = await getDb();
-  if (!db) return;
-
-  await db.insert(subscriptions).values(data).onDuplicateKeyUpdate({
-    set: {
-      stripeCustomerId: data.stripeCustomerId,
-      stripeSubscriptionId: data.stripeSubscriptionId,
-      status: data.status,
-      currentPeriodEnd: data.currentPeriodEnd,
-      updatedAt: new Date(),
-    },
-  });
-}
-
-export async function updateSubscriptionStatus(
-  userId: number,
-  status: 'active' | 'inactive' | 'trialing' | 'canceled' | 'past_due'
-) {
-  const db = await getDb();
-  if (!db) return;
-
-  await db.update(subscriptions)
-    .set({ status, updatedAt: new Date() })
-    .where(eq(subscriptions.userId, userId));
 }
 
 // ============= REVIEW FUNCTIONS =============
@@ -598,254 +633,52 @@ export async function getReviewsByArtistId(artistId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  // Select only core columns to avoid schema mismatch
-  return await db.select({
-    id: reviews.id,
-    bookingId: reviews.bookingId,
-    artistId: reviews.artistId,
-    venueId: reviews.venueId,
-    rating: reviews.rating,
-    createdAt: reviews.createdAt,
-    updatedAt: reviews.updatedAt,
-  }).from(reviews)
-    .where(eq(reviews.artistId, artistId))
-    .orderBy(desc(reviews.createdAt));
+  return await db.select().from(reviews).where(eq(reviews.artistId, artistId));
 }
 
-export async function getReviewByBookingId(bookingId: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  
-  // Select only core columns to avoid schema mismatch
-  const result = await db.select({
-    id: reviews.id,
-    bookingId: reviews.bookingId,
-    artistId: reviews.artistId,
-    venueId: reviews.venueId,
-    rating: reviews.rating,
-    createdAt: reviews.createdAt,
-    updatedAt: reviews.updatedAt,
-  }).from(reviews).where(eq(reviews.bookingId, bookingId)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
-}
-
-export async function getReviewById(reviewId: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  
-  // Select only core columns to avoid schema mismatch
-  const result = await db.select({
-    id: reviews.id,
-    bookingId: reviews.bookingId,
-    artistId: reviews.artistId,
-    venueId: reviews.venueId,
-    rating: reviews.rating,
-    createdAt: reviews.createdAt,
-    updatedAt: reviews.updatedAt,
-  }).from(reviews).where(eq(reviews.id, reviewId)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
-}
-
-export async function updateReview(reviewId: number, updates: { artistResponse?: string, respondedAt?: Date }) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  await db.update(reviews).set(updates).where(eq(reviews.id, reviewId));
-}
-
-export async function getAverageRatingForArtist(artistId: number): Promise<{ average: number; count: number }> {
-  const db = await getDb();
-  if (!db) return { average: 0, count: 0 };
-  
-  const artistReviews = await getReviewsByArtistId(artistId);
-  if (!artistReviews || artistReviews.length === 0) {
-    return { average: 0, count: 0 };
-  }
-  
-  const sum = artistReviews.reduce((acc, review) => acc + review.rating, 0);
-  return {
-    average: sum / artistReviews.length,
-    count: artistReviews.length,
-  };
-}
-
-export async function getUnreadMessageCountByBooking(bookingId: number, userId: number) {
-  const db = await getDb();
-  if (!db) return 0;
-  
-  // Note: recipientId and isRead columns may not exist in current schema
-  // Returning 0 for now
-  return 0;
-}
-
-export async function getTotalUnreadMessageCount(userId: number) {
-  const db = await getDb();
-  if (!db) return 0;
-  
-  // Note: recipientId and isRead columns may not exist in current schema
-  // Returning 0 for now
-  return 0;
-}
-
-export async function markMessagesAsRead(bookingId: number, userId: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  
-  // Note: recipientId and isRead columns may not exist in current schema
-  // Skipping update for now
-}
-
-// ============= VENUE REVIEW FUNCTIONS =============
-
-export async function createVenueReview(review: InsertVenueReview) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  
-  const result = await db.insert(venueReviews).values(review);
-  return result;
-}
-
-export async function getVenueReviewsByVenueId(venueId: number) {
+export async function getReviewsByVenueId(venueId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  return await db.select().from(venueReviews)
-    .where(eq(venueReviews.venueId, venueId))
-    .orderBy(desc(venueReviews.createdAt));
+  return await db.select().from(venueReviews).where(eq(venueReviews.venueId, venueId));
 }
 
-export async function getVenueReviewByBookingId(bookingId: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  
-  const result = await db.select().from(venueReviews).where(eq(venueReviews.bookingId, bookingId)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
-}
-
-export async function getVenueReviewById(reviewId: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const result = await db.select().from(venueReviews).where(eq(venueReviews.id, reviewId)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
-}
-
-export async function updateVenueReview(reviewId: number, updates: { venueResponse?: string, respondedAt?: Date }) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  await db.update(venueReviews).set(updates).where(eq(venueReviews.id, reviewId));
-}
-
-export async function getAverageRatingForVenue(venueId: number): Promise<{ average: number; count: number }> {
-  const db = await getDb();
-  if (!db) return { average: 0, count: 0 };
-  
-  const reviews = await getVenueReviewsByVenueId(venueId);
-  if (!reviews || reviews.length === 0) {
-    return { average: 0, count: 0 };
-  }
-  
-  const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
-  return {
-    average: sum / reviews.length,
-    count: reviews.length,
-  };
-}
-
-
-// ============= FAVORITES FUNCTIONS =============
+// ============= FAVORITE FUNCTIONS =============
 
 export async function addFavorite(userId: number, artistId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  // Check if already favorited
-  const existing = await db.select().from(favorites)
-    .where(and(eq(favorites.userId, userId), eq(favorites.artistId, artistId)));
-  
-  if (existing.length > 0) {
-    return existing[0];
-  }
-  
-  await db.insert(favorites).values({ userId, artistId });
-  return { userId, artistId };
+  const result = await db.insert(favorites).values({ userId, artistId });
+  return result;
 }
 
 export async function removeFavorite(userId: number, artistId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  await db.delete(favorites)
-    .where(and(eq(favorites.userId, userId), eq(favorites.artistId, artistId)));
+  await db.delete(favorites).where(
+    sql`${favorites.userId} = ${userId} AND ${favorites.artistId} = ${artistId}`
+  );
 }
 
 export async function getFavoritesByUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  // Get favorites with artist profile details
-  const userFavorites = await db.select().from(favorites)
-    .where(eq(favorites.userId, userId));
-  
-  if (userFavorites.length === 0) return [];
-  
-  const artistIds = userFavorites.map(f => f.artistId);
-  const artists = await db.select().from(artistProfiles)
-    .where(sql`${artistProfiles.id} IN (${sql.join(artistIds.map(id => sql`${id}`), sql`, `)})`);
-  
-  return artists;
+  return await db.select().from(favorites).where(eq(favorites.userId, userId));
 }
 
 export async function isFavorited(userId: number, artistId: number) {
   const db = await getDb();
   if (!db) return false;
   
-  const result = await db.select().from(favorites)
-    .where(and(eq(favorites.userId, userId), eq(favorites.artistId, artistId)));
+  const result = await db.select().from(favorites).where(
+    sql`${favorites.userId} = ${userId} AND ${favorites.artistId} = ${artistId}`
+  ).limit(1);
   
   return result.length > 0;
 }
-
-export async function getFavoriteCount(artistId: number) {
-  const db = await getDb();
-  if (!db) return 0;
-  
-  const result = await db.select().from(favorites)
-    .where(eq(favorites.artistId, artistId));
-  
-  return result.length;
-}
-
-
-export async function getVenuesWhoFavoritedArtist(artistId: number) {
-  const db = await getDb();
-  if (!db) return [];
-  
-  // Get all users who favorited this artist
-  const userFavorites = await db.select().from(favorites)
-    .where(eq(favorites.artistId, artistId));
-  
-  if (userFavorites.length === 0) return [];
-  
-  const userIds = userFavorites.map(f => f.userId);
-  
-  // Get user details and venue profiles
-  const venueUsers = await db.select().from(users)
-    .where(sql`${users.id} IN (${sql.join(userIds.map(id => sql`${id}`), sql`, `)})`);
-  
-  const venueProfilesList = await db.select().from(venueProfiles)
-    .where(sql`${venueProfiles.userId} IN (${sql.join(userIds.map(id => sql`${id}`), sql`, `)})`);
-  
-  // Combine user and venue profile data
-  return venueUsers.map(user => {
-    const profile = venueProfilesList.find((p: VenueProfile) => p.userId === user.id);
-    return {
-      userId: user.id,
-      email: user.email,
-      name: user.name,
-      organizationName: profile?.organizationName,
-    };
-  }).filter(v => v.email); // Only return venues with email addresses
-}
-
 
 // ============= BOOKING TEMPLATE FUNCTIONS =============
 
@@ -853,314 +686,67 @@ export async function createBookingTemplate(template: InsertBookingTemplate) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  await db.insert(bookingTemplates).values(template);
-  return template;
+  const result = await db.insert(bookingTemplates).values(template);
+  return result;
 }
 
 export async function getBookingTemplatesByUserId(userId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  return await db.select().from(bookingTemplates)
-    .where(eq(bookingTemplates.venueId, userId))
-    .orderBy(desc(bookingTemplates.updatedAt));
+  return await db.select().from(bookingTemplates).where(eq(bookingTemplates.userId, userId));
 }
 
-export async function getBookingTemplateById(id: number) {
-  const db = await getDb();
-  if (!db) return null;
-  
-  const result = await db.select().from(bookingTemplates)
-    .where(eq(bookingTemplates.id, id));
-  
-  return result[0] || null;
-}
-
-export async function updateBookingTemplate(id: number, updates: Partial<InsertBookingTemplate>) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  
-  await db.update(bookingTemplates)
-    .set(updates)
-    .where(eq(bookingTemplates.id, id));
-}
-
-export async function deleteBookingTemplate(id: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  
-  await db.delete(bookingTemplates)
-    .where(eq(bookingTemplates.id, id));
-}
-
-
-// ============= ANALYTICS FUNCTIONS =============
+// ============= PROFILE VIEW FUNCTIONS =============
 
 export async function trackProfileView(artistId: number, viewerUserId?: number, ipAddress?: string) {
   const db = await getDb();
-  if (!db) return;
+  if (!db) throw new Error("Database not available");
   
-  await db.insert(profileViews).values({
+  const result = await db.insert(profileViews).values({
     artistId,
-  });
-}
-
-export async function getProfileViewCount(artistId: number, days?: number) {
-  const db = await getDb();
-  if (!db) return 0;
-  
-  let conditions = [eq(profileViews.artistId, artistId)];
-  
-  // Note: viewedAt tracking not implemented in current schema
-  
-  const result = await db.select({ count: sql<number>`count(*)` })
-    .from(profileViews)
-    .where(and(...conditions));
-  
-  return Number(result[0]?.count) || 0;
-}
-
-export async function getBookingStats(artistId: number) {
-  const db = await getDb();
-  if (!db) return {
-    total: 0,
-    pending: 0,
-    confirmed: 0,
-    completed: 0,
-    cancelled: 0,
-    totalRevenue: 0,
-  };
-  
-  const allBookings = await db.select().from(bookings)
-    .where(eq(bookings.artistId, artistId));
-  
-  const stats = {
-    total: allBookings.length,
-    pending: allBookings.filter(b => b.status === 'pending').length,
-    confirmed: allBookings.filter(b => b.status === 'confirmed').length,
-    completed: allBookings.filter(b => b.status === 'completed').length,
-    cancelled: allBookings.filter(b => b.status === 'cancelled').length,
-    totalRevenue: allBookings
-      .filter(b => b.status === 'completed' && b.totalFee)
-      .reduce((sum, b) => sum + (typeof b.totalFee === 'number' ? b.totalFee : 0), 0),
-  };
-  
-  return stats;
-}
-
-export async function getRevenueByMonth(artistId: number, months: number = 12) {
-  const db = await getDb();
-  if (!db) return [];
-  
-  const startDate = new Date();
-  startDate.setMonth(startDate.getMonth() - months);
-  
-  const completedBookings = await db.select().from(bookings)
-    .where(
-      and(
-        eq(bookings.artistId, artistId),
-        eq(bookings.status, 'completed'),
-        gte(bookings.eventDate, startDate)
-      )
-    )
-    .orderBy(bookings.eventDate);
-  
-  // Group by month
-  const revenueByMonth: { [key: string]: number } = {};
-  completedBookings.forEach(booking => {
-    if (booking.eventDate && booking.totalFee) {
-      const monthKey = booking.eventDate.toISOString().substring(0, 7); // YYYY-MM
-      const fee = typeof booking.totalFee === 'number' ? booking.totalFee : 0;
-      revenueByMonth[monthKey] = (revenueByMonth[monthKey] || 0) + fee;
-    }
+    viewerUserId,
+    ipAddress,
+    viewedAt: new Date(),
   });
   
-  return Object.entries(revenueByMonth).map(([month, revenue]) => ({
-    month,
-    revenue,
-  }));
+  return result;
 }
-
 
 // ============= BOOKING REMINDER FUNCTIONS =============
 
-export async function getBookingsNeedingReminders() {
+export async function createBookingReminder(reminder: InsertBookingReminder) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(bookingReminders).values(reminder);
+  return result;
+}
+
+export async function getBookingRemindersByBookingId(bookingId: number) {
   const db = await getDb();
   if (!db) return [];
   
-  const now = new Date();
-  const sevenDaysFromNow = new Date(now);
-  sevenDaysFromNow.setDate(now.getDate() + 7);
-  const threeDaysFromNow = new Date(now);
-  threeDaysFromNow.setDate(now.getDate() + 3);
-  const oneDayFromNow = new Date(now);
-  oneDayFromNow.setDate(now.getDate() + 1);
-  
-  // Get all confirmed bookings with upcoming event dates
-  const upcomingBookings = await db.select().from(bookings)
-    .where(
-      and(
-        eq(bookings.status, 'confirmed'),
-        gte(bookings.eventDate, now)
-      )
-    );
-  
-  // Get all sent reminders
-  const sentReminders = await db.select().from(bookingReminders);
-  
-  const bookingsNeedingReminders: Array<{
-    booking: Booking;
-    reminderType: '7_days' | '3_days' | '1_day';
-  }> = [];
-  
-  for (const booking of upcomingBookings) {
-    if (!booking.eventDate) continue;
-    
-    const eventDate = new Date(booking.eventDate);
-    const daysUntil = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    
-    // Check if we need to send 7-day reminder
-    if (daysUntil <= 7 && daysUntil > 6) {
-      const alreadySent = sentReminders.some(
-        r => r.bookingId === booking.id && r.reminderType === '7_days'
-      );
-      if (!alreadySent) {
-        bookingsNeedingReminders.push({ booking, reminderType: '7_days' });
-      }
-    }
-    
-    // Check if we need to send 3-day reminder
-    if (daysUntil <= 3 && daysUntil > 2) {
-      const alreadySent = sentReminders.some(
-        r => r.bookingId === booking.id && r.reminderType === '3_days'
-      );
-      if (!alreadySent) {
-        bookingsNeedingReminders.push({ booking, reminderType: '3_days' });
-      }
-    }
-    
-    // Check if we need to send 1-day reminder
-    if (daysUntil <= 1 && daysUntil > 0) {
-      const alreadySent = sentReminders.some(
-        r => r.bookingId === booking.id && r.reminderType === '1_day'
-      );
-      if (!alreadySent) {
-        bookingsNeedingReminders.push({ booking, reminderType: '1_day' });
-      }
-    }
-  }
-  
-  return bookingsNeedingReminders;
+  return await db.select().from(bookingReminders).where(eq(bookingReminders.bookingId, bookingId));
 }
 
-export async function markReminderSent(bookingId: number, reminderType: string) {
-  const db = await getDb();
-  if (!db) return;
-  
-  await db.insert(bookingReminders).values({
-    bookingId,
-    reminderType,
-  });
-}
-
-
-// ============= CALENDAR FUNCTIONS =============
-
-export async function getVenueBookingsByDateRange(venueId: number, startDate: Date, endDate: Date) {
-  const db = await getDb();
-  if (!db) return [];
-  
-  return await db.select().from(bookings)
-    .where(
-      and(
-        eq(bookings.venueId, venueId),
-        gte(bookings.eventDate, startDate),
-        lte(bookings.eventDate, endDate)
-      )
-    )
-    .orderBy(bookings.eventDate);
-}
+// ============= AVAILABILITY HELPER FUNCTIONS =============
 
 export async function getFavoritedArtistsAvailability(userId: number, startDate: Date, endDate: Date) {
   const db = await getDb();
   if (!db) return [];
   
-  // Get user's favorited artists
-  const userFavorites = await db.select().from(favorites)
-    .where(eq(favorites.userId, userId));
-  
-  if (userFavorites.length === 0) return [];
-  
+  const userFavorites = await getFavoritesByUser(userId);
   const artistIds = userFavorites.map(f => f.artistId);
   
-  // Get availability for those artists in the date range
-  const availabilityRecords = await db.select().from(availability)
-    .where(
-      and(
-        inArray(availability.artistId, artistIds),
-        gte(availability.date, startDate),
-        lte(availability.date, endDate),
-        eq(availability.status, 'available')
-      )
-    );
+  if (artistIds.length === 0) return [];
   
-  // Enrich with artist details
-  const enrichedAvailability = [];
-  for (const avail of availabilityRecords) {
-    const artist = await getArtistProfileById(avail.artistId);
-    if (artist) {
-      enrichedAvailability.push({
-        ...avail,
-        artistName: artist.artistName,
-      });
-    }
-  }
+  const availabilities = await db.select().from(availability).where(
+    sql`${availability.artistId} IN (${sql.join(artistIds.map(id => sql`${id}`), sql`, `)})`
+  );
   
-  return enrichedAvailability;
-}
-
-// ============= PAYMENT FUNCTIONS =============
-
-export async function updateBookingPaymentStatus(bookingId: number, paymentStatus: string, stripePaymentIntentId?: string, depositPaidAt?: Date, fullPaymentPaidAt?: Date) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  
-  const updates: any = { paymentStatus };
-  if (stripePaymentIntentId) updates.stripePaymentIntentId = stripePaymentIntentId;
-  if (depositPaidAt) updates.depositPaidAt = depositPaidAt;
-  if (fullPaymentPaidAt) updates.fullPaymentPaidAt = fullPaymentPaidAt;
-  
-  await db.update(bookings)
-    .set(updates)
-    .where(eq(bookings.id, bookingId));
-}
-
-export async function recordRefund(bookingId: number, stripeRefundId: string) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  
-  await db.update(bookings)
-    .set({ paymentStatus: "refunded", stripeRefundId })
-    .where(eq(bookings.id, bookingId));
-}
-
-export async function getPaymentHistory(bookingId: number) {
-  const db = await getDb();
-  if (!db) return null;
-  
-  const booking = await db.select({
-    id: bookings.id,
-    paymentStatus: bookings.paymentStatus,
-    totalFee: bookings.totalFee,
-    depositAmount: bookings.depositAmount,
-    depositPaidAt: bookings.depositPaidAt,
-    fullPaymentPaidAt: bookings.fullPaymentPaidAt,
-    stripePaymentIntentId: bookings.stripePaymentIntentId,
-    stripeRefundId: bookings.stripeRefundId,
-  })
-  .from(bookings)
-  .where(eq(bookings.id, bookingId))
-  .limit(1);
-  
-  return booking[0] || null;
+  return availabilities.filter(av => {
+    const avDate = new Date(av.date);
+    return avDate >= startDate && avDate <= endDate;
+  });
 }

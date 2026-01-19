@@ -102,6 +102,25 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({ userRole, userNa
             </a>
           </Link>
 
+          {/* Pricing */}
+          <Link href="/pricing">
+            <a style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              color: '#6b7280',
+              textDecoration: 'none',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'color 0.2s',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#7c3aed')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = '#6b7280')}
+            >
+              Pricing
+            </a>
+          </Link>
+
           {/* Support Tickets */}
           <Link href="/support">
             <a style={{
@@ -125,6 +144,20 @@ export const MainNavigation: React.FC<MainNavigationProps> = ({ userRole, userNa
           {/* Admin Links */}
           {userRole === 'admin' && (
             <>
+              <Link href="/admin">
+                <a style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  color: '#ef4444',
+                  textDecoration: 'none',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                }}
+                >
+                  Admin
+                </a>
+              </Link>
               <Link href="/admin/support">
                 <a style={{
                   display: 'flex',

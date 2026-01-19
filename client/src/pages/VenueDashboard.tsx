@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { ContractManagementDashboard } from '../components/ContractManagementDashboard';
 import { trpc } from '../lib/trpc';
+import { useAuth } from '@/_core/hooks/useAuth';
+import { useLocation } from 'wouter';
 
 interface Contract {
   id: string;
@@ -19,13 +21,58 @@ interface Contract {
 }
 
 export const VenueDashboard: React.FC = () => {
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<'overview' | 'contracts' | 'events' | 'favorites'>('overview');
   
+  // Check if user is a venue
+  if (user?.role !== 'venue') {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+      }}>
+        <div style={{
+          maxWidth: '400px',
+          textAlign: 'center',
+          padding: '40px',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
+          backgroundColor: '#f9fafb',
+        }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '10px' }}>Venue Access Required</h2>
+          <p style={{ color: '#6b7280', marginBottom: '20px' }}>
+            This page is only available for venue accounts. Please log in as a venue to access the venue dashboard.
+          </p>
+          <button
+            onClick={() => navigate('/get-started')}
+            style={{
+              backgroundColor: '#7c3aed',
+              color: 'white',
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+            }}
+          >
+            Switch to Venue Account
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
   // Fetch contracts using TRPC
-  const { data: contractsData, isLoading, error } = trpc.contractManagement.getVenueContracts.useQuery();
+  const { data: templatesData, isLoading, error } = trpc.contractManagement.getTemplates.useQuery();
+  const contractsData = templatesData?.templates;
   
   // Fetch favorited artists
-  const { data: favoritesData } = trpc.favorites.getVenueFavorites.useQuery();
+  const { data: favoritesData, isLoading: favoritesLoading } = trpc.favorite.getMyFavorites.useQuery();
   
   const contracts: Contract[] = contractsData?.map((c: any) => ({
     id: c.id.toString(),

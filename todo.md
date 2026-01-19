@@ -350,6 +350,17 @@
 - [x] TemplatePreview component for template details
 - [x] ReferralWidget component for dashboard
 - [x] ReferralPerformanceChart component for analytics
+## Current Issues to Fix
+- [x] Fix user role update not persisting in admin panel - Fixed by removing non-existent status field
+- [ ] Fix messages table query error (recipientId column case sensitivity) - Added error handling
+- [ ] Fix Stripe webhook functions (upsertSubscription, updateSubscriptionStatus don't exist)
+- [ ] Fix bookings query error - Added error handling to return empty array on failure
+- [x] Implement onboarding access control - Redirect already-onboarded artists/venues to dashboard
+- [x] Fix React hooks order violation in onboarding pages - Extracted form logic into separate components
+- [x] Fix loading state stuck on onboarding pages - Fixed useEffect logic to handle all user role cases
+- [x] Fix missing setAvailability function - Implemented upsert function for availability management
+- [x] Fix subscription page query error - Added error handling to getSubscriptionByUserId
+- [x] Improve subscription management page layout - Better visual hierarchy and action buttons
 
 ## Test Data Generator
 - [x] Create test data generation API endpoints with TRPC - 4 endpoints created
@@ -357,7 +368,7 @@
 - [x] Implement realistic data generation logic - realistic data generators
 - [ ] Write tests for data generator
 - [ ] Integrate into admin dashboard
-- [ ] Create documentation
+- [ ] Create docume...ation
 ## Advanced Testing Features
 
 - [x] Extend testdata router with database insertion endpoints (seedUsers, seedArtists, seedVenues, seedBookings)

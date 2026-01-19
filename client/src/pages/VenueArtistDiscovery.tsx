@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { trpc } from '../lib/trpc';
+import { useAuth } from '@/_core/hooks/useAuth';
+import { useLocation } from 'wouter';
 import { Heart, MapPin, Music, Calendar, Star } from 'lucide-react';
 
 interface Artist {
@@ -19,22 +21,63 @@ interface Artist {
 }
 
 export const VenueArtistDiscovery: React.FC = () => {
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [showOnlyAvailable, setShowOnlyAvailable] = useState(false);
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
 
+  // Check if user is a venue
+  if (user?.role !== 'venue') {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+      }}>
+        <div style={{
+          maxWidth: '400px',
+          textAlign: 'center',
+          padding: '40px',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
+          backgroundColor: '#f9fafb',
+        }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '10px' }}>Venue Access Required</h2>
+          <p style={{ color: '#6b7280', marginBottom: '20px' }}>
+            This page is only available for venue accounts. Please log in as a venue to discover artists.
+          </p>
+          <button
+            onClick={() => navigate('/get-started')}
+            style={{
+              backgroundColor: '#7c3aed',
+              color: 'white',
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+            }}
+          >
+            Switch to Venue Account
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Fetch all artists
   const { data: artistsData, isLoading } = trpc.artist.getAll.useQuery();
   
-  // Fetch artist availability
-  const { data: availabilityData } = trpc.availability.getForArtists.useQuery();
-  
   // Fetch favorites
-  const { data: favoritesData } = trpc.favorites.getVenueFavorites.useQuery();
+  const { data: favoritesData } = trpc.favorite.getMyFavorites.useQuery();
   
   // Toggle favorite mutation
-  const toggleFavoriteMutation = trpc.favorites.toggleFavorite.useMutation();
+  const toggleFavoriteMutation = trpc.favorite.toggleFavorite.useMutation();
 
   const artists: Artist[] = useMemo(() => {
     if (!artistsData) return [];
@@ -49,9 +92,9 @@ export const VenueArtistDiscovery: React.FC = () => {
       profileImage: artist.profileImage,
       hourlyRate: artist.hourlyRate,
       isFavorited: favoritesData?.some((fav: any) => fav.artistId === artist.id),
-      availability: availabilityData?.filter((avail: any) => avail.artistId === artist.id),
+      availability: [],
     }));
-  }, [artistsData, availabilityData, favoritesData]);
+  }, [artistsData, favoritesData]);
 
   const filteredArtists = useMemo(() => {
     return artists.filter((artist) => {
