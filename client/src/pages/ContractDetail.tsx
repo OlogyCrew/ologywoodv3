@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Download, Share2, History, GitCompare, PenTool } from "lucide-react";
+import { ArrowLeft, Download, Share2, History, GitCompare, PenTool, Mail } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -12,10 +12,12 @@ import { toast } from "sonner";
 import { ContractStatusTransition } from "@/components/ContractStatusTransition";
 import { ContractAuditTrail } from "@/components/ContractAuditTrail";
 import { ContractComparison } from "@/components/ContractComparison";
+import { SendContractModal } from "@/components/SendContractModal";
 
 export default function ContractDetail() {
   const queryClient = useQueryClient();
   const [signatureName, setSignatureName] = useState('');
+  const [sendModalOpen, setSendModalOpen] = useState(false);
   const { id } = useParams<{ id: string }>();
   
   // Parse and validate contractId
@@ -165,6 +167,26 @@ export default function ContractDetail() {
     }
   };
 
+  const handleSendContract = async (data: any) => {
+    try {
+      const response = await fetch(`/api/contracts/${contractId}/share`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send contract');
+      }
+
+      toast.success(`Contract sent to ${data.recipientName}!`);
+      setSendModalOpen(false);
+    } catch (error) {
+      console.error('Error sending contract:', error);
+      toast.error('Failed to send contract');
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "signed":
@@ -198,6 +220,10 @@ export default function ContractDetail() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setSendModalOpen(true)}>
+              <Mail className="h-4 w-4 mr-2" />
+              Send to Artist
+            </Button>
             <Button variant="outline" onClick={handleShare}>
               <Share2 className="h-4 w-4 mr-2" />
               Share
@@ -475,6 +501,13 @@ export default function ContractDetail() {
           </TabsContent>
         </Tabs>
       </div>
+      <SendContractModal
+        open={sendModalOpen}
+        onOpenChange={setSendModalOpen}
+        contractId={contractId || 0}
+        contractTitle={displayContract?.contractData?.title || displayContract?.title || 'Contract'}
+        onSend={handleSendContract}
+      />
     </div>
   );
 }
