@@ -95,13 +95,22 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   console.log(`[Stripe Webhook] Checkout completed for user ${userId}`);
 
   // Update or create subscription record
-  await db.upsertSubscription({
-    userId: parseInt(userId),
-    stripeCustomerId: customerId,
-    stripeSubscriptionId: subscriptionId,
-    planType: 'basic',
-    status: 'trialing', // Will be updated by subscription.created event
-  });
+  const existingSubscription = await db.getSubscriptionByUserId(parseInt(userId));
+  if (existingSubscription) {
+    await db.updateSubscription(parseInt(userId), {
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscriptionId,
+      status: 'active', // Will be updated by subscription.created event
+    });
+  } else {
+    await db.createSubscription({
+      userId: parseInt(userId),
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscriptionId,
+      tier: 'basic',
+      status: 'active', // Will be updated by subscription.created event
+    });
+  }
 }
 
 async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
@@ -119,14 +128,24 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   const subData = subscription as any;
   const currentPeriodEnd = subData.current_period_end ? new Date(subData.current_period_end * 1000) : undefined;
 
-  await db.upsertSubscription({
-    userId: parseInt(userId),
-    stripeCustomerId: customerId,
-    stripeSubscriptionId: subscription.id,
-    planType: 'basic',
-    status,
-    currentPeriodEnd,
-  });
+  const existingSubscription = await db.getSubscriptionByUserId(parseInt(userId));
+  if (existingSubscription) {
+    await db.updateSubscription(parseInt(userId), {
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscription.id,
+      status,
+      currentPeriodEnd,
+    });
+  } else {
+    await db.createSubscription({
+      userId: parseInt(userId),
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscription.id,
+      tier: 'basic',
+      status,
+      currentPeriodEnd,
+    });
+  }
   
   // Send email for new subscriptions
   if (subscription.status === 'trialing' || subscription.status === 'active') {
@@ -155,7 +174,9 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 
   console.log(`[Stripe Webhook] Subscription deleted for user ${userId}`);
 
-  await db.updateSubscriptionStatus(parseInt(userId), 'canceled');
+  await db.updateSubscription(parseInt(userId), {
+    status: 'cancelled',
+  });
   
   // Send cancellation email
   const user = await db.getUserById(parseInt(userId));
@@ -195,26 +216,27 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
     const userId = subscription.metadata?.userId;
 
     if (userId) {
-      await db.updateSubscriptionStatus(parseInt(userId), 'past_due');
+      await db.updateSubscription(parseInt(userId), {
+        status: 'past_due',
+      });
     }
   }
 }
 
-function mapStripeStatus(stripeStatus: Stripe.Subscription.Status): 'active' | 'inactive' | 'trialing' | 'canceled' | 'past_due' {
+function mapStripeStatus(stripeStatus: Stripe.Subscription.Status): 'active' | 'cancelled' | 'past_due' {
   switch (stripeStatus) {
     case 'active':
+    case 'trialing': // Map trialing to active
       return 'active';
-    case 'trialing':
-      return 'trialing';
     case 'past_due':
       return 'past_due';
     case 'canceled':
     case 'unpaid':
     case 'incomplete_expired':
-      return 'canceled';
+      return 'cancelled';
     case 'incomplete':
     case 'paused':
     default:
-      return 'inactive';
+      return 'active'; // Default to active instead of inactive
   }
 }

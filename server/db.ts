@@ -936,3 +936,4 @@ export async function deleteContractTemplate(id: number): Promise<boolean> {
   await db.delete(contractTemplates).where(eq(contractTemplates.id, id));
   return true;
 }
+
