@@ -20,13 +20,13 @@ export function registerOAuthRoutes(app: Express) {
       return;
     }
 
-    // Set a timeout for the entire OAuth flow (30 seconds)
+    // Set a timeout for the entire OAuth flow (90 seconds for mobile compatibility)
     const timeoutId = setTimeout(() => {
       console.error("[OAuth] Callback timeout - request took too long");
       if (!res.headersSent) {
         res.status(504).json({ error: "OAuth callback timeout" });
       }
-    }, 30000);
+    }, 90000);
 
     try {
       console.log("[OAuth] Starting OAuth callback...");

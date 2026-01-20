@@ -55,14 +55,17 @@ export default function Home() {
     }
   }, [error]);
 
-  // Limit to first 6 artists for home page to avoid performance issues on mobile
-  const displayedArtists = artists?.slice(0, 6) || [];
+  // Search through ALL artists first, then limit display to 6 if no search query
+  const allArtists = artists || [];
   
-  const filteredArtists = displayedArtists.filter(artist => 
+  const filteredArtists = allArtists.filter(artist => 
     searchQuery === "" || 
     artist.artistName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     artist.location?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  
+  // Limit to first 6 artists for home page display if no search query
+  const displayedArtists = searchQuery === "" ? filteredArtists.slice(0, 6) : filteredArtists;
 
   return (
     <div className="min-h-screen flex flex-col">
