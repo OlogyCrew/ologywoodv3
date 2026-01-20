@@ -1,0 +1,25 @@
+{
+  "query": "SELECT * FROM contracts WHERE id = 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user KrGaEuKwKPW5NAp.root --database mP6FLm6cHUyVdEMNViNuZS --execute SELECT * FROM contracts WHERE id = 5;",
+  "rows": [
+    {
+      "id": "5",
+      "bookingId": "5",
+      "artistId": "90005",
+      "venueId": "2",
+      "contractType": "ryder",
+      "contractTitle": "Private Party Contract",
+      "contractContent": "This contract is for a private birthday party. The artist will perform a 1-hour set tailored to the client preferences.",
+      "contractPdfUrl": "NULL",
+      "status": "draft",
+      "artistSignedAt": "NULL",
+      "venueSignedAt": "NULL",
+      "createdAt": "2026-01-17 22:35:12",
+      "updatedAt": "2026-01-17 22:35:12"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tbookingId\tartistId\tvenueId\tcontractType\tcontractTitle\tcontractContent\tcontractPdfUrl\tstatus\tartistSignedAt\tvenueSignedAt\tcreatedAt\tupdatedAt\n5\t5\t90005\t2\tryder\tPrivate Party Contract\tThis contract is for a private birthday party. The artist will perform a 1-hour set tailored to the client preferences.\tNULL\tdraft\tNULL\tNULL\t2026-01-17 22:35:12\t2026-01-17 22:35:12\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

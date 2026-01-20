@@ -1,4 +1,4 @@
-import { router, protectedProcedure } from '../_core/trpc';
+import { protectedProcedure, router } from "../_core/trpc";
 import { z } from 'zod';
 import * as db from '../db';
 import { TRPCError } from '@trpc/server';
@@ -22,37 +22,43 @@ const venueProcedure = protectedProcedure.use(async ({ ctx, next }) => {
 });
 
 export const contractsRouter = router({
-  // Create a new contract for a booking
+  // Create a new contract (with or without a booking)
   create: protectedProcedure
     .input(z.object({
-      bookingId: z.number(),
-      contractType: z.enum(['ryder', 'performance', 'custom']).default('ryder'),
-      contractTitle: z.string(),
-      contractContent: z.string(),
+      title: z.string(),
+      description: z.string().optional(),
+      contractType: z.enum(['rider', 'service_agreement', 'performance_contract', 'booking_agreement', 'other']).default('rider'),
+      terms: z.string().optional(),
+      artistId: z.number().optional(),
+      venueId: z.number().optional(),
+      bookingId: z.number().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const booking = await db.getBookingById(input.bookingId);
-      if (!booking) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Booking not found' });
-      }
+      // If bookingId is provided, verify access
+      if (input.bookingId) {
+        const booking = await db.getBookingById(input.bookingId);
+        if (!booking) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Booking not found' });
+        }
 
-      // Verify user is either the artist or venue for this booking
-      const isArtist = ctx.user.role === 'artist' && booking.artistId === ctx.user.id;
-      const isVenue = ctx.user.role === 'venue' && booking.venueId === ctx.user.id;
-      const isAdmin = ctx.user.role === 'admin';
+        const isArtist = ctx.user.role === 'artist' && booking.artistId === ctx.user.id;
+        const isVenue = ctx.user.role === 'venue' && booking.venueId === ctx.user.id;
+        const isAdmin = ctx.user.role === 'admin';
 
-      if (!isArtist && !isVenue && !isAdmin) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Unauthorized to create contract for this booking' });
+        if (!isArtist && !isVenue && !isAdmin) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Unauthorized to create contract for this booking' });
+        }
       }
 
       const contract = await db.createContract({
         bookingId: input.bookingId,
-        artistId: booking.artistId,
-        venueId: booking.venueId,
+        artistId: input.artistId,
+        venueId: input.venueId,
         contractData: {
           type: input.contractType,
-          title: input.contractTitle,
-          content: input.contractContent,
+          title: input.title,
+          description: input.description,
+          terms: input.terms,
         },
         status: 'draft',
       });
@@ -64,21 +70,45 @@ export const contractsRouter = router({
   getById: protectedProcedure
     .input(z.object({ contractId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const contract = await db.getContractById(input.contractId);
-      if (!contract) {
-        return null;
+      try {
+        const contract = await db.getContractById(input.contractId);
+        if (!contract) {
+          return null;
+        }
+
+        // Verify user has access
+        const isArtist = ctx.user.role === 'artist' && contract.artistId === ctx.user.id;
+        const isVenue = ctx.user.role === 'venue' && contract.venueId === ctx.user.id;
+        const isAdmin = ctx.user.role === 'admin';
+
+        if (!isArtist && !isVenue && !isAdmin) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Unauthorized to view this contract' });
+        }
+
+        return contract || null;
+      } catch (error) {
+        console.error('[Contracts.getById] Error:', error);
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to fetch contract' });
       }
+    }),
 
-      // Verify user has access
-      const isArtist = ctx.user.role === 'artist' && contract.artistId === ctx.user.id;
-      const isVenue = ctx.user.role === 'venue' && contract.venueId === ctx.user.id;
-      const isAdmin = ctx.user.role === 'admin';
-
-      if (!isArtist && !isVenue && !isAdmin) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Unauthorized to view this contract' });
+  // Get all contracts
+  getAll: protectedProcedure
+    .query(async ({ ctx }) => {
+      try {
+        const isAdmin = ctx.user.role === 'admin';
+        if (isAdmin) {
+          // Admins can see all contracts
+          return await db.getAllContracts?.() || [];
+        } else {
+          // Regular users see only their contracts
+          return await db.getUserContracts?.(ctx.user.id) || [];
+        }
+      } catch (error) {
+        console.error('[Contracts.getAll] Error:', error);
+        return [];
       }
-
-      return contract || null;
     }),
 
   // Get contract by booking ID
@@ -102,189 +132,88 @@ export const contractsRouter = router({
       return contract;
     }),
 
-  // Get all contracts for current user
-  getMyContracts: protectedProcedure
-    .query(async ({ ctx }) => {
-      if (ctx.user.role === 'artist') {
-        const contracts = await db.getContractsByArtistId(ctx.user.id);
-        return contracts || [];
-      } else if (ctx.user.role === 'venue') {
-        const contracts = await db.getContractsByVenueId(ctx.user.id);
-        return contracts || [];
-      }
-      return [];
-    }),
-
-  // Update contract content
-  update: protectedProcedure
+  // Update contract status
+  updateStatus: protectedProcedure
     .input(z.object({
       contractId: z.number(),
-      contractTitle: z.string().optional(),
-      contractContent: z.string().optional(),
+      status: z.enum(['draft', 'pending_signatures', 'signed', 'executed', 'archived']),
     }))
     .mutation(async ({ ctx, input }) => {
-      const contract = await db.getContractById(input.contractId);
-      if (!contract) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Contract not found' });
+      try {
+        const isAdmin = ctx.user.role === 'admin';
+        if (!isAdmin) {
+          const contract = await db.getContractById(input.contractId);
+          if (!contract) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Contract not found' });
+          }
+          const isArtist = ctx.user.role === 'artist' && contract.artistId === ctx.user.id;
+          const isVenue = ctx.user.role === 'venue' && contract.venueId === ctx.user.id;
+          if (!isArtist && !isVenue) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Unauthorized to update this contract' });
+          }
+        }
+        const updated = await db.updateContractStatus(input.contractId, input.status);
+        if (!updated) {
+          console.warn('[Contracts.updateStatus] Update returned undefined');
+          return { id: input.contractId, status: input.status };
+        }
+        return updated;
+      } catch (error) {
+        console.error('[Contracts.updateStatus] Error:', error);
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to update contract status' });
       }
-
-      // Only allow updates if contract is in draft status
-      if (contract.status !== 'draft') {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cannot update a signed or executed contract' });
-      }
-
-      // Verify user is the creator (artist or venue)
-      const isArtist = ctx.user.role === 'artist' && contract.artistId === ctx.user.id;
-      const isVenue = ctx.user.role === 'venue' && contract.venueId === ctx.user.id;
-      const isAdmin = ctx.user.role === 'admin';
-
-      if (!isArtist && !isVenue && !isAdmin) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Unauthorized to update this contract' });
-      }
-
-      return await db.updateContract(input.contractId, {
-        contractData: {
-          title: input.contractTitle,
-          content: input.contractContent,
-        },
-      });
     }),
 
-  // Record a signature
-  sign: protectedProcedure
+  // Send contract to artist
+  sendToArtist: protectedProcedure
     .input(z.object({
       contractId: z.number(),
-      signatureData: z.string(),
-      signatureType: z.enum(['canvas', 'typed', 'image']),
+      artistId: z.number(),
+      artistEmail: z.string().email(),
+      message: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const contract = await db.getContractById(input.contractId);
-      if (!contract) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Contract not found' });
-      }
-
-      // Determine signer role
-      let signerRole: 'artist' | 'venue';
-      if (ctx.user.role === 'artist' && contract.artistId === ctx.user.id) {
-        signerRole = 'artist';
-      } else if (ctx.user.role === 'venue' && contract.venueId === ctx.user.id) {
-        signerRole = 'venue';
-      } else if (ctx.user.role === 'admin') {
-        // Admin can sign as either party - determine based on context
-        signerRole = 'artist'; // Default to artist
-      } else {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Unauthorized to sign this contract' });
-      }
-
-      // Check if already signed by this party
-      const existingSignature = await db.getSignatureByContractAndSigner(input.contractId, ctx.user.id);
-      if (existingSignature) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Already signed by this party' });
-      }
-
-      // Create signature record
-      const verificationToken = uuidv4();
-      const signature = await db.createSignature({
-        contractId: input.contractId,
-        signerId: ctx.user.id,
-        signatureData: input.signatureData,
-      });
-
-      // Update contract status to 'sent' when first signature is added
-      if (signerRole === 'artist') {
-        await db.updateContract(input.contractId, {
-          status: 'sent',
-        });
-      } else {
-        await db.updateContract(input.contractId, {
-          status: 'sent',
-        });
-      }
-
-      // Check if both parties have signed
-      const allSignatures = await db.getSignaturesByContractId(input.contractId);
-      if (allSignatures.length >= 2) {
-        // Both parties have signed - update contract status
-        await db.updateContract(input.contractId, {
-          status: 'signed',
-        });
-
-        // Send notification emails
-        const artist = await db.getUserById(contract.artistId);
-        const venue = await db.getUserById(contract.venueId);
-
-        if (artist?.email) {
-          await email.sendContractSigned({
-            to: artist.email,
-            artistName: artist.name || 'Artist',
-            venueName: venue?.name || 'Venue',
-            contractTitle: contract.contractData?.title || 'Contract',
-          });
+      try {
+        const contract = await db.getContractById(input.contractId);
+        if (!contract) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Contract not found' });
         }
 
-        if (venue?.email) {
-          await email.sendContractSigned({
-            to: venue.email,
-            artistName: artist?.name || 'Artist',
-            venueName: venue.name || 'Venue',
-            contractTitle: contract.contractData?.title || 'Contract',
-          });
+        // Verify user is the contract creator (venue)
+        const isVenue = ctx.user.role === 'venue' && contract.venueId === ctx.user.id;
+        const isAdmin = ctx.user.role === 'admin';
+
+        if (!isVenue && !isAdmin) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Only contract creator can send to artist' });
         }
-      }
 
-      return signature;
+        // Update contract with artist ID and change status to pending_signatures
+        const updated = await db.updateContractStatus(input.contractId, 'pending_signatures');
+        
+        // Send email notification to artist
+        const contractData = contract.contractData as any;
+        const contractTitle = contractData?.title || `Contract #${contract.id}`;
+        
+        await email.sendEmail({
+          to: input.artistEmail,
+          subject: `New Contract: ${contractTitle}`,
+          template: 'contract-sent',
+          data: {
+            artistName: 'Artist',
+            contractTitle,
+            contractId: contract.id,
+            message: input.message || 'Please review and sign this contract.',
+            contractLink: `${process.env.VITE_APP_URL}/contract/${contract.id}`,
+          },
+        });
+
+        return { success: true, contract: updated };
+      } catch (error) {
+        console.error('[Contracts.sendToArtist] Error:', error);
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to send contract' });
+      }
     }),
 
-  // Get signatures for a contract
-  getSignatures: protectedProcedure
-    .input(z.object({ contractId: z.number() }))
-    .query(async ({ ctx, input }) => {
-      const contract = await db.getContractById(input.contractId);
-      if (!contract) {
-        return [];
-      }
-
-      // Verify access
-      const isArtist = ctx.user.role === 'artist' && contract.artistId === ctx.user.id;
-      const isVenue = ctx.user.role === 'venue' && contract.venueId === ctx.user.id;
-      const isAdmin = ctx.user.role === 'admin';
-
-      if (!isArtist && !isVenue && !isAdmin) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Unauthorized to view signatures' });
-      }
-
-      const signatures = await db.getSignaturesByContractId(input.contractId);
-      return signatures || [];
-    }),
-
-  // Cancel a contract
-  cancel: protectedProcedure
-    .input(z.object({
-      contractId: z.number(),
-      reason: z.string().optional(),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const contract = await db.getContractById(input.contractId);
-      if (!contract) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Contract not found' });
-      }
-
-      // Only allow cancellation if not already executed
-      if (contract.status === 'executed' || contract.status === 'cancelled') {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cannot cancel this contract' });
-      }
-
-      // Verify user is authorized
-      const isArtist = ctx.user.role === 'artist' && contract.artistId === ctx.user.id;
-      const isVenue = ctx.user.role === 'venue' && contract.venueId === ctx.user.id;
-      const isAdmin = ctx.user.role === 'admin';
-
-      if (!isArtist && !isVenue && !isAdmin) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Unauthorized to cancel this contract' });
-      }
-
-      return await db.updateContract(input.contractId, {
-        status: 'cancelled',
-      });
-    }),
 });

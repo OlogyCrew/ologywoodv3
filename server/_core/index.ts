@@ -1,4 +1,3 @@
-import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
@@ -48,15 +47,10 @@ async function startServer() {
   // app.use(requestLogger as any);
   
   // Apply rate limiting to authentication endpoints
-  app.use('/api/oauth/login', createRateLimiter(RATE_LIMIT_CONFIGS.auth));
-  app.use('/api/oauth/callback', createRateLimiter(RATE_LIMIT_CONFIGS.auth));
+  app.post('/api/auth/login', createRateLimiter(RATE_LIMIT_CONFIGS.auth));
+  app.post('/api/auth/register', createRateLimiter(RATE_LIMIT_CONFIGS.auth));
   
-  // OAuth callback under /api/oauth/callback
-  registerOAuthRoutes(app);
-  // Apply rate limiting to TRPC API
-  app.use('/api/trpc', createRateLimiter(RATE_LIMIT_CONFIGS.api));
-  
-  // tRPC API
+  // tRPC API routes
   app.use(
     "/api/trpc",
     createExpressMiddleware({
@@ -64,6 +58,67 @@ async function startServer() {
       createContext,
     })
   );
+  
+  // PDF download endpoint
+  app.get('/api/contracts/:id/pdf', async (req, res) => {
+    try {
+      const contractId = parseInt(req.params.id);
+      if (!contractId || isNaN(contractId)) {
+        return res.status(400).json({ error: 'Invalid contract ID' });
+      }
+      
+      const { PDFDocument, rgb } = await import('pdf-lib');
+      const { getContractById } = await import('../db');
+      
+      const contract = await getContractById(contractId);
+      if (!contract) {
+        return res.status(404).json({ error: 'Contract not found' });
+      }
+      
+      const pdfDoc = await PDFDocument.create();
+      const page = pdfDoc.addPage([612, 792]);
+      const { width, height } = page.getSize();
+      const margin = 40;
+      let yPosition = height - margin;
+      
+      const drawText = (text: string, size: number = 12) => {
+        if (text.trim()) {
+          page.drawText(text, {
+            x: margin,
+            y: yPosition,
+            size,
+            color: rgb(0, 0, 0),
+          });
+        }
+        yPosition -= size + 8;
+      };
+      
+      drawText('OLOGYWOOD', 16);
+      drawText('Performance Contract', 14);
+      drawText('', 8);
+      drawText(`Contract ID: ${contractId}`, 12);
+      drawText(`Status: ${contract.status}`, 12);
+      drawText(`Created: ${new Date(contract.createdAt).toLocaleDateString()}`, 10);
+      drawText('', 8);
+      drawText('This is a performance contract for the artist booking platform.', 10);
+      drawText('', 8);
+      drawText(`Contract Status: ${contract.status.toUpperCase()}`, 12);
+      if (contract.status === 'executed') {
+        drawText('[FULLY SIGNED AND EXECUTED]', 14);
+      }
+      
+      const pdfBytes = await pdfDoc.save();
+      const pdfBuffer = Buffer.from(pdfBytes);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="contract-${contractId}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error('[PDF Endpoint] Error:', error);
+      res.status(500).json({ error: 'Failed to generate PDF' });
+    }
+  });
+  
   // Apply rate limiting to public endpoints
   app.get('/api/artists', createRateLimiter(RATE_LIMIT_CONFIGS.public));
   app.get('/api/search', createRateLimiter(RATE_LIMIT_CONFIGS.public));
@@ -83,12 +138,9 @@ async function startServer() {
   }
 
   server.listen(port, () => {
+    console.log(`[OAuth] Initialized with baseURL: ${process.env.OAUTH_SERVER_URL}`);
     console.log(`Server running on http://localhost:${port}/`);
-    console.log('[Rate Limiter] Initialized with cleanup every 60 seconds');
   });
 }
 
-startServer().catch((error) => {
-  console.error('[Server Error]', error);
-  process.exit(1);
-});
+startServer().catch(console.error);

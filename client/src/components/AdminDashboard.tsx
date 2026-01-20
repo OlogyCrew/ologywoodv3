@@ -36,6 +36,18 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6 p-6">
+      {/* Quick Navigation */}
+      <Card className="p-4 bg-blue-50 border-blue-200 mb-6">
+        <h3 className="font-bold mb-3">Quick Links</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          <Button size="sm" variant="outline" onClick={() => window.location.href = '/artists'}>Artists</Button>
+          <Button size="sm" variant="outline" onClick={() => window.location.href = '/venues'}>Venues</Button>
+          <Button size="sm" variant="outline" onClick={() => window.location.href = '/bookings'}>Bookings</Button>
+          <Button size="sm" variant="outline" onClick={() => window.location.href = '/contracts'}>Contracts</Button>
+          <Button size="sm" variant="outline" onClick={() => window.location.href = '/riders'}>Riders</Button>
+        </div>
+      </Card>
+
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Admin Testing Dashboard</h1>

@@ -2136,3 +2136,46 @@ The Ologywood platform is production-ready with:
   - Subscription management
   - Refund tracking
   - Tax documents
+
+## Contract Workflow Improvements (Current)
+- [x] Fix ContractsList to show all contracts created by user
+- [x] Fix contract detail page to display contractData properly
+- [ ] Add "Send to Artist" button on contract detail page
+- [ ] Create send contract modal with artist selection
+- [ ] Add contract notification system for artists
+- [ ] Create notification page showing pending contracts for artists
+- [ ] Test complete contract workflow (create, send, sign, approve, download)
+
+## Specialized Ryder Contract Templates
+- [ ] Create Musicians/Bands Ryder template with sound, stage, and technical specs
+- [ ] Create Comedians Ryder template with mic, lighting, and stage requirements
+- [ ] Create Dancers/Choreographers Ryder template with floor, mirrors, and music specs
+- [ ] Create Magicians/Illusionists Ryder template with rigging and blackout requirements
+- [ ] Create Speakers/Presenters Ryder template with AV setup and podium specs
+- [ ] Create DJs Ryder template with equipment and power requirements
+- [ ] Create Acrobats/Circus Acts Ryder template with rigging and safety specs
+- [ ] Create Tribute Bands Ryder template with instrument and backline specs
+- [ ] Add contract_templates table to database schema
+- [ ] Create database functions for template CRUD operations
+- [ ] Update CreateContract form with template selection dropdown
+- [ ] Implement template pre-population logic in contract creation
+- [ ] Test template creation and editing workflow
+- [ ] Test PDF generation with template data
+
+
+## Specialized Ryder Contract Templates - COMPLETED
+- [x] Create Musicians/Bands Ryder template with sound, stage, and technical specs
+- [x] Create Comedians Ryder template with mic, lighting, and stage requirements
+- [x] Create Dancers/Choreographers Ryder template with floor, mirrors, and music specs
+- [x] Create Magicians/Illusionists Ryder template with rigging and blackout requirements
+- [x] Create Speakers/Presenters Ryder template with AV setup and podium specs
+- [x] Create DJs Ryder template with equipment and power requirements
+- [x] Create Acrobats/Circus Acts Ryder template with rigging and safety specs
+- [x] Create Tribute Bands Ryder template with instrument and backline specs
+- [x] Add contract_templates table to database schema
+- [x] Create database functions for template CRUD operations
+- [x] Update CreateContract form with template selection dropdown
+- [x] Implement template pre-population logic in contract creation
+- [x] Test template creation and editing workflow
+- [ ] Migrate contract_templates table to live database
+- [ ] Test PDF generation with template data

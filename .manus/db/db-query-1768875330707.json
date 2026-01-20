@@ -1,0 +1,28 @@
+{
+  "query": "SELECT id, status, createdAt, contractData FROM contracts ORDER BY createdAt DESC LIMIT 3;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user KrGaEuKwKPW5NAp.root --database mP6FLm6cHUyVdEMNViNuZS --execute SELECT id, status, createdAt, contractData FROM contracts ORDER BY createdAt DESC LIMIT 3;",
+  "rows": [
+    {
+      "id": "60009",
+      "status": "draft",
+      "createdAt": "2026-01-20 02:13:09",
+      "contractData": "{\"description\": \"TTTE\", \"terms\": \"RrrrrrrrrwgabRrrrr\", \"title\": \"Teestttt\", \"type\": \"rider\"}"
+    },
+    {
+      "id": "60008",
+      "status": "draft",
+      "createdAt": "2026-01-20 02:10:16",
+      "contractData": "{\"description\": \"TestttttTestttttTesttttt\", \"terms\": \"TestttttTestttttTesttttt\", \"title\": \"Testtttt\", \"type\": \"rider\"}"
+    },
+    {
+      "id": "60007",
+      "status": "draft",
+      "createdAt": "2026-01-20 02:05:28",
+      "contractData": "{\"description\": \" TestTestTest\", \"terms\": \"TestTestTestTestTest, I\", \"title\": \"Contract #1 Booking Contract Details  Share Download PDF Pending signatures\", \"type\": \"rider\"}"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstatus\tcreatedAt\tcontractData\n60009\tdraft\t2026-01-20 02:13:09\t{\"description\": \"TTTE\", \"terms\": \"RrrrrrrrrwgabRrrrr\", \"title\": \"Teestttt\", \"type\": \"rider\"}\n60008\tdraft\t2026-01-20 02:10:16\t{\"description\": \"TestttttTestttttTesttttt\", \"terms\": \"TestttttTestttttTesttttt\", \"title\": \"Testtttt\", \"type\": \"rider\"}\n60007\tdraft\t2026-01-20 02:05:28\t{\"description\": \" TestTestTest\", \"terms\": \"TestTestTestTestTest, I\", \"title\": \"Contract #1 Booking Contract Details  Share Download PDF Pending signatures\", \"type\": \"rider\"}\n",
+  "stderr": "",
+  "execution_time_ms": 237
+}

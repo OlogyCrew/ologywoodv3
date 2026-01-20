@@ -1,0 +1,25 @@
+{
+  "query": "SELECT * FROM contracts LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user KrGaEuKwKPW5NAp.root --database mP6FLm6cHUyVdEMNViNuZS --execute SELECT * FROM contracts LIMIT 1;",
+  "rows": [
+    {
+      "id": "1",
+      "bookingId": "1",
+      "artistId": "90005",
+      "venueId": "1",
+      "contractType": "ryder",
+      "contractTitle": "Test Contract",
+      "contractContent": "This is a sample contract for the artist performance at the venue. Please review all terms and conditions carefully before signing.",
+      "contractPdfUrl": "NULL",
+      "status": "pending_signatures",
+      "artistSignedAt": "NULL",
+      "venueSignedAt": "NULL",
+      "createdAt": "2026-01-17 22:31:22",
+      "updatedAt": "2026-01-17 22:31:22"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tbookingId\tartistId\tvenueId\tcontractType\tcontractTitle\tcontractContent\tcontractPdfUrl\tstatus\tartistSignedAt\tvenueSignedAt\tcreatedAt\tupdatedAt\n1\t1\t90005\t1\tryder\tTest Contract\tThis is a sample contract for the artist performance at the venue. Please review all terms and conditions carefully before signing.\tNULL\tpending_signatures\tNULL\tNULL\t2026-01-17 22:31:22\t2026-01-17 22:31:22\n",
+  "stderr": "",
+  "execution_time_ms": 83
+}

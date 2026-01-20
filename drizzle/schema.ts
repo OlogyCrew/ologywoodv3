@@ -260,9 +260,9 @@ export type InsertBookingReminder = typeof bookingReminders.$inferInsert;
  */
 export const contracts = mysqlTable("contracts", {
   id: int("id").autoincrement().primaryKey(),
-  bookingId: int("bookingId").notNull(),
-  artistId: int("artistId").notNull(),
-  venueId: int("venueId").notNull(),
+  bookingId: int("bookingId"),
+  artistId: int("artistId"),
+  venueId: int("venueId"),
   contractData: json("contractData").$type<Record<string, any>>(),
   status: mysqlEnum("status", ["draft", "sent", "signed", "executed", "cancelled"]).default("draft").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -571,3 +571,23 @@ export const riderContractTemplates = mysqlTable("rider_contract_templates", {
 
 export type RiderContractTemplate = typeof riderContractTemplates.$inferSelect;
 export type InsertRiderContractTemplate = typeof riderContractTemplates.$inferInsert;
+
+
+/**
+ * Contract Templates - Pre-built templates for different artist types
+ */
+export const contractTemplates = mysqlTable("contract_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  artistType: varchar("artistType", { length: 100 }).notNull(),
+  contractType: mysqlEnum("contractType", ["rider", "service_agreement", "performance_contract", "booking_agreement", "other"]).default("rider").notNull(),
+  templateData: json("templateData").$type<Record<string, any>>(),
+  isPublic: boolean("isPublic").default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ContractTemplate = typeof contractTemplates.$inferSelect;
+export type InsertContractTemplate = typeof contractTemplates.$inferInsert;

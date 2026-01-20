@@ -150,10 +150,13 @@ export const AdminDashboard: React.FC = () => {
               <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '15px', margin: '0 0 15px 0' }}>Quick Actions</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
                 {[
+                  { label: 'View Artists', action: () => navigate('/artists') },
+                  { label: 'View Venues', action: () => navigate('/venues') },
+                  { label: 'View Bookings', action: () => navigate('/bookings') },
+                  { label: 'View Contracts', action: () => navigate('/contracts') },
+                  { label: 'Sample Contract #5', action: () => navigate('/contracts/5') },
+                  { label: 'View Riders', action: () => navigate('/riders') },
                   { label: 'View Support Tickets', action: () => navigate('/admin/sla-tracking') },
-                  { label: 'Manage Users', action: () => alert('User management coming soon') },
-                  { label: 'View Analytics', action: () => alert('Analytics coming soon') },
-                  { label: 'Platform Settings', action: () => alert('Settings coming soon') },
                 ].map((action, idx) => (
                   <button
                     key={idx}

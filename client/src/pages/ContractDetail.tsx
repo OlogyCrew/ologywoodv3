@@ -4,13 +4,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Download, Share2, History, GitCompare } from "lucide-react";
+import { ArrowLeft, Download, Share2, History, GitCompare, PenTool } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ContractStatusTransition } from "@/components/ContractStatusTransition";
 import { ContractAuditTrail } from "@/components/ContractAuditTrail";
 import { ContractComparison } from "@/components/ContractComparison";
 
 export default function ContractDetail() {
+  const queryClient = useQueryClient();
+  const [signatureName, setSignatureName] = useState('');
   const { id } = useParams<{ id: string }>();
   
   // Parse and validate contractId
@@ -23,40 +28,91 @@ export default function ContractDetail() {
     { enabled: isValidId, retry: 1, throwOnError: false }
   );
 
-  // Query audit trail
-  const { data: auditTrail } = trpc.contractAudit.getAuditTrail.useQuery(
-    { contractId: contractId || 0 },
-    { enabled: isValidId, throwOnError: false }
-  );
+  // Query audit trail (disabled - router not implemented)
+  const auditTrail = null;
 
-  // Query contract versions
-  const { data: contractVersions } = trpc.contractAudit.getContractVersions.useQuery(
-    { contractId: contractId || 0 },
-    { enabled: isValidId, throwOnError: false }
-  );
+  // Query contract versions (disabled - router not implemented)
+  const contractVersions = null;
 
-  // Query status options
-  const { data: statusOptions } = trpc.contractStatus.getStatusOptions.useQuery(
-    { contractId: contractId || 0 },
-    { enabled: isValidId, throwOnError: false }
-  );
+  // Query status options - using default status options
+  // Define what actions are available for each status
+  const getStatusOptions = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return { canSign: false, canReject: false, canApprove: true, canCancel: true };
+      case 'pending_signatures':
+        return { canSign: true, canReject: true, canApprove: false, canCancel: true };
+      case 'signed':
+        return { canSign: false, canReject: false, canApprove: true, canCancel: false };
+      case 'executed':
+        return { canSign: false, canReject: false, canApprove: false, canCancel: false };
+      default:
+        return { canSign: false, canReject: false, canApprove: false, canCancel: false };
+    }
+  };
+  
+  // Use real contract data from database
+  const displayContract = contract;
+  
+  // Now get status options based on displayContract
+  const statusOptions = getStatusOptions(displayContract?.status || 'draft');
+  
+  // Create mutation for updating contract status
+  const updateStatusMutation = trpc.contracts.updateStatus.useMutation({
+    onSuccess: (data) => {
+      toast.success('Contract signed successfully');
+      // Update the display contract status immediately
+      if (data && data.status) {
+        displayContract.status = data.status;
+      }
+      // Clear the signature input after successful signing
+      setSignatureName('');
+      // Invalidate the contract query to refetch updated data
+      queryClient.invalidateQueries({ queryKey: ['contracts.getById'] });
+      // Note: We don't reload the page - user stays on Status tab
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to sign contract');
+    },
+  });
 
-  // Provide mock contract data if not found (for demo purposes)
-  const mockContract = {
-    id: contractId || 5,
-    bookingId: 1,
-    status: "pending_signatures",
-    contractType: "ryder",
-    contractTitle: "Performance Contract",
-    contractContent: "This is a sample contract for the artist performance at the venue. Please review all terms and conditions carefully before signing.",
-    createdAt: new Date(Date.now() - 7 * 24 * 3600000),
-    artistSignedAt: null,
-    venueSignedAt: null,
-    updatedAt: new Date(),
+  // Handler for approving the contract
+  const handleApprove = async (notes: string) => {
+    console.log('[handleApprove] Starting with notes:', notes);
+    try {
+      console.log('[handleApprove] Calling mutation with contractId:', contractId);
+      updateStatusMutation.mutate({
+        contractId: contractId || 0,
+        status: 'executed',
+      });
+    } catch (error) {
+      console.error('Error approving contract:', error);
+      toast.error('Failed to approve contract');
+    }
   };
 
-  // Always use mock data as fallback for demo purposes
-  const displayContract = contract || mockContract;
+  // Handler for signing the contract
+  const handleSign = async () => {
+    console.log('[handleSign] Starting with signature:', signatureName);
+    if (!signatureName.trim()) {
+      toast.error('Please enter your name to sign the contract');
+      return;
+    }
+    try {
+      console.log('[handleSign] Calling mutation with contractId:', contractId);
+      updateStatusMutation.mutate({
+        contractId: contractId || 0,
+        status: 'signed',
+      });
+      // Update mock contract with signature
+      if (displayContract) {
+        displayContract.artistSignedAt = new Date().toISOString();
+      }
+    } catch (error) {
+      console.error('Error signing contract:', error);
+      toast.error('Failed to sign contract');
+    }
+  };
 
   if (isLoading && !contract) {
     return (
@@ -72,10 +128,13 @@ export default function ContractDetail() {
   // }
 
   const handleDownloadPDF = async () => {
+    const toastId = toast.loading("Generating PDF...");
     try {
-      toast.loading("Generating PDF...");
-      // Call API to generate and download PDF
-      const response = await fetch(`/api/trpc/contracts.generatePdf?input=${JSON.stringify({ id: parseInt(id || "0") })}`);
+      const contractId = parseInt(id || "0");
+      const response = await fetch(`/api/contracts/${contractId}/pdf`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
       if (!response.ok) throw new Error("Failed to generate PDF");
       
       const blob = await response.blob();
@@ -87,8 +146,11 @@ export default function ContractDetail() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      toast.dismiss(toastId);
       toast.success("PDF downloaded successfully");
     } catch (error) {
+      console.error('PDF download error:', error);
+      toast.dismiss(toastId);
       toast.error("Failed to download PDF");
     }
   };
@@ -140,10 +202,18 @@ export default function ContractDetail() {
               <Share2 className="h-4 w-4 mr-2" />
               Share
             </Button>
-            <Button onClick={handleDownloadPDF}>
-              <Download className="h-4 w-4 mr-2" />
-              Download PDF
-            </Button>
+            {(displayContract?.status === 'signed' || displayContract?.status === 'executed') && (
+              <Button onClick={handleDownloadPDF}>
+                <Download className="h-4 w-4 mr-2" />
+                Download PDF
+              </Button>
+            )}
+            {displayContract?.status === 'pending_signatures' && (
+              <Button disabled title="Contract must be signed before downloading">
+                <Download className="h-4 w-4 mr-2" />
+                Download PDF
+              </Button>
+            )}
           </div>
         </div>
 
@@ -209,12 +279,43 @@ export default function ContractDetail() {
             {/* Contract Content */}
             <Card>
               <CardHeader>
-                <CardTitle>Contract Terms</CardTitle>
+                <CardTitle>Contract Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {displayContract.contractData && typeof displayContract.contractData === 'object' ? (
+                  <>
+                    {displayContract.contractData.title && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Title</p>
+                        <p className="font-semibold">{displayContract.contractData.title}</p>
+                      </div>
+                    )}
+                    {displayContract.contractData.type && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Contract Type</p>
+                        <p className="font-semibold capitalize">{displayContract.contractData.type.replace(/_/g, " ")}</p>
+                      </div>
+                    )}
+                    {displayContract.contractData.description && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Description</p>
+                        <p className="text-sm">{displayContract.contractData.description}</p>
+                      </div>
+                    )}
+                  </>
+                ) : null}
+              </CardContent>
+            </Card>
+
+            {/* Contract Terms */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Terms & Conditions</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="prose prose-sm max-w-none">
                   <div className="bg-muted p-4 rounded-lg whitespace-pre-wrap text-sm">
-                    {displayContract.contractContent || "No contract content available"}
+                    {displayContract.contractData?.terms || "No contract terms available"}
                   </div>
                 </div>
               </CardContent>
@@ -260,16 +361,96 @@ export default function ContractDetail() {
 
           {/* Status Tab */}
           <TabsContent value="status">
-            {statusOptions && (
-              <ContractStatusTransition
+            <div className="space-y-6">
+              {/* Show Contract Content for Review */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Contract to Review</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {displayContract.contractData && typeof displayContract.contractData === 'object' ? (
+                    <>
+                      {displayContract.contractData.title && (
+                        <div>
+                          <p className="text-sm font-semibold text-muted-foreground">Title</p>
+                          <p className="text-lg font-bold">{displayContract.contractData.title}</p>
+                        </div>
+                      )}
+                      {displayContract.contractData.type && (
+                        <div>
+                          <p className="text-sm font-semibold text-muted-foreground">Contract Type</p>
+                          <p className="capitalize">{displayContract.contractData.type.replace(/_/g, " ")}</p>
+                        </div>
+                      )}
+                      {displayContract.contractData.description && (
+                        <div>
+                          <p className="text-sm font-semibold text-muted-foreground">Description</p>
+                          <p className="text-sm">{displayContract.contractData.description}</p>
+                        </div>
+                      )}
+                      {displayContract.contractData.terms && (
+                        <div>
+                          <p className="text-sm font-semibold text-muted-foreground">Terms & Conditions</p>
+                          <div className="bg-muted p-4 rounded-lg whitespace-pre-wrap text-sm max-h-64 overflow-y-auto">
+                            {displayContract.contractData.terms}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground">No contract content available</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {displayContract?.status === 'pending_signatures' && (
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <PenTool className="h-5 w-5" />
+                      Sign Contract
+                    </CardTitle>
+                    <CardDescription>
+                      By entering your name below, you agree to the terms shown above
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">Your Signature (Name)</label>
+                      <input
+                        type="text"
+                        placeholder="Enter your full name"
+                        value={signatureName}
+                        onChange={(e) => {
+                          console.log('[signature input] Changed to:', e.target.value);
+                          setSignatureName(e.target.value);
+                        }}
+                        className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <Button 
+                      onClick={handleSign}
+                      disabled={!signatureName.trim() || updateStatusMutation.isPending}
+                      className="w-full"
+                    >
+                      {updateStatusMutation.isPending ? 'Signing...' : 'Sign Contract'}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+              {statusOptions && (
+                <ContractStatusTransition
                 contractId={parseInt(id || "0")}
                 currentStatus={displayContract.status}
                 canSign={statusOptions.canSign}
                 canReject={statusOptions.canReject}
                 canApprove={statusOptions.canApprove}
                 canCancel={statusOptions.canCancel}
+                onSign={handleSign}
+                onApprove={handleApprove}
               />
             )}
+            </div>
           </TabsContent>
 
           {/* Audit Trail Tab */}

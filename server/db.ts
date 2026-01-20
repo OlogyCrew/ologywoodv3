@@ -15,7 +15,8 @@ import {
   profileViews, InsertProfileView, ProfileView,
   bookingReminders, InsertBookingReminder, BookingReminder,
   contracts, InsertContract, Contract,
-  signatures, InsertSignature, Signature
+  signatures, InsertSignature, Signature,
+  contractTemplates, InsertContractTemplate, ContractTemplate
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { eq, sql } from "drizzle-orm";
@@ -30,17 +31,64 @@ export async function createContract(data: InsertContract): Promise<Contract> {
     throw new Error('Database not available');
   }
 
-  const result = await db.insert(contracts).values(data);
-  const contractId = (result as any).insertId;
-  const contract = await db.select().from(contracts).where(eq(contracts.id, contractId)).limit(1);
-  return contract[0] as Contract;
+  // Build insert data, only including defined fields
+  const insertData: any = {
+    contractData: data.contractData,
+    status: data.status,
+  };
+
+  // Only add optional fields if they're defined
+  if (data.bookingId !== undefined && data.bookingId !== null) {
+    insertData.bookingId = data.bookingId;
+  }
+  if (data.artistId !== undefined && data.artistId !== null) {
+    insertData.artistId = data.artistId;
+  }
+  if (data.venueId !== undefined && data.venueId !== null) {
+    insertData.venueId = data.venueId;
+  }
+
+  await db.insert(contracts).values(insertData);
+  
+  // Get the latest inserted contract
+  const latestContracts = await db.select({
+    id: contracts.id,
+    bookingId: contracts.bookingId,
+    artistId: contracts.artistId,
+    venueId: contracts.venueId,
+    contractData: contracts.contractData,
+    status: contracts.status,
+    createdAt: contracts.createdAt,
+    updatedAt: contracts.updatedAt,
+  }).from(contracts).orderBy(contracts.id).limit(1);
+  
+  if (!latestContracts || latestContracts.length === 0) {
+    throw new Error('Failed to retrieve created contract');
+  }
+  
+  return latestContracts[0] as Contract;
 }
 
 export async function getContractById(id: number): Promise<Contract | undefined> {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(contracts).where(eq(contracts.id, id)).limit(1);
-  return result[0];
+  try {
+    // Select only columns that exist in the database
+    const result = await db.select({
+      id: contracts.id,
+      bookingId: contracts.bookingId,
+      artistId: contracts.artistId,
+      venueId: contracts.venueId,
+      contractData: contracts.contractData,
+      status: contracts.status,
+      createdAt: contracts.createdAt,
+      updatedAt: contracts.updatedAt,
+    }).from(contracts).where(eq(contracts.id, id)).limit(1);
+    return result[0] as any;
+  } catch (error) {
+    console.error('[getContractById] Error:', error);
+    return undefined;
+  }
 }
 
 export async function getContractByBookingId(bookingId: number): Promise<Contract | undefined> {
@@ -68,6 +116,23 @@ export async function updateContract(id: number, data: Partial<InsertContract>):
   
   await db.update(contracts).set(data).where(eq(contracts.id, id));
   return await getContractById(id);
+}
+
+export async function updateContractStatus(id: number, status: string): Promise<Contract | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  try {
+    await db.update(contracts).set({ status }).where(eq(contracts.id, id));
+    const updated = await getContractById(id);
+    if (updated) {
+      return updated;
+    }
+    console.warn('[updateContractStatus] Contract not found after update:', id);
+    return undefined;
+  } catch (error) {
+    console.error('[updateContractStatus] Error:', error);
+    return undefined;
+  }
 }
 
 // ============= SIGNATURE FUNCTIONS =============
@@ -749,4 +814,125 @@ export async function getFavoritedArtistsAvailability(userId: number, startDate:
     const avDate = new Date(av.date);
     return avDate >= startDate && avDate <= endDate;
   });
+}
+
+
+// ============= GET ALL CONTRACTS =============
+export async function getAllContracts(): Promise<Contract[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  try {
+    const result = await db.select({
+      id: contracts.id,
+      bookingId: contracts.bookingId,
+      artistId: contracts.artistId,
+      venueId: contracts.venueId,
+      contractData: contracts.contractData,
+      status: contracts.status,
+      createdAt: contracts.createdAt,
+      updatedAt: contracts.updatedAt,
+    }).from(contracts);
+    
+    return result as Contract[];
+  } catch (error) {
+    console.error('[getAllContracts] Error:', error);
+    return [];
+  }
+}
+
+// ============= GET USER CONTRACTS =============
+export async function getUserContracts(userId: number): Promise<Contract[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  try {
+    const result = await db.select({
+      id: contracts.id,
+      bookingId: contracts.bookingId,
+      artistId: contracts.artistId,
+      venueId: contracts.venueId,
+      contractData: contracts.contractData,
+      status: contracts.status,
+      createdAt: contracts.createdAt,
+      updatedAt: contracts.updatedAt,
+    }).from(contracts).where(
+      sql`${contracts.artistId} = ${userId} OR ${contracts.venueId} = ${userId}`
+    );
+    
+    return result as Contract[];
+  } catch (error) {
+    console.error('[getUserContracts] Error:', error);
+    return [];
+  }
+}
+
+
+// ============= CONTRACT TEMPLATE FUNCTIONS =============
+export async function createContractTemplate(data: InsertContractTemplate): Promise<ContractTemplate> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error('Database not available');
+  }
+
+  const result = await db.insert(contractTemplates).values(data);
+  
+  // Get the created template
+  const templates = await db.select().from(contractTemplates).where(
+    eq(contractTemplates.id, result.insertId as any)
+  ).limit(1);
+  
+  return templates[0] as ContractTemplate;
+}
+
+export async function getContractTemplateById(id: number): Promise<ContractTemplate | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(contractTemplates).where(eq(contractTemplates.id, id)).limit(1);
+  return result[0];
+}
+
+export async function getContractTemplatesByArtistType(artistType: string): Promise<ContractTemplate[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(contractTemplates).where(eq(contractTemplates.artistType, artistType));
+}
+
+export async function getContractTemplatesByContractType(contractType: string): Promise<ContractTemplate[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(contractTemplates).where(eq(contractTemplates.contractType, contractType as any));
+}
+
+export async function getPublicContractTemplates(): Promise<ContractTemplate[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(contractTemplates).where(eq(contractTemplates.isPublic, true));
+}
+
+export async function getUserContractTemplates(userId: number): Promise<ContractTemplate[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(contractTemplates).where(eq(contractTemplates.userId, userId));
+}
+
+export async function updateContractTemplate(id: number, data: Partial<InsertContractTemplate>): Promise<ContractTemplate | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  await db.update(contractTemplates).set(data).where(eq(contractTemplates.id, id));
+  return getContractTemplateById(id);
+}
+
+export async function deleteContractTemplate(id: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  await db.delete(contractTemplates).where(eq(contractTemplates.id, id));
+  return true;
 }

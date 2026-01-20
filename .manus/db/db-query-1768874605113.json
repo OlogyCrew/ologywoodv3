@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, status, createdAt, contractData FROM contracts ORDER BY id DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user KrGaEuKwKPW5NAp.root --database mP6FLm6cHUyVdEMNViNuZS --execute SELECT id, status, createdAt, contractData FROM contracts ORDER BY id DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "60006",
+      "status": "draft",
+      "createdAt": "2026-01-20 02:02:04",
+      "contractData": "{\"description\": \"Test\", \"terms\": \"TestTestTestTestTest\", \"title\": \"Test\", \"type\": \"rider\"}"
+    },
+    {
+      "id": "60005",
+      "status": "draft",
+      "createdAt": "2026-01-20 01:56:56",
+      "contractData": "{\"description\": \"Test\", \"terms\": \"Test\", \"title\": \"Test\", \"type\": \"rider\"}"
+    },
+    {
+      "id": "60004",
+      "status": "draft",
+      "createdAt": "2026-01-20 01:44:46",
+      "contractData": "{\"description\": \"Test\", \"terms\": \"Test Content \", \"title\": \"Content Creation\", \"type\": \"rider\"}"
+    },
+    {
+      "id": "60003",
+      "status": "draft",
+      "createdAt": "2026-01-20 01:38:55",
+      "contractData": "{\"description\": \"\\nlockdown-install.js:1 SES_UNCAUGHT_EXCEPTION: null\\n(Test\", \"terms\": \"lockdown-install.js:1 SES_UNCAUGHT_EXCEPTION: null\\n(Test\", \"title\": \" lockdown-install.js:1 SES_UNCAUGHT_EXCEPTION: null (Test\", \"type\": \"rider\"}"
+    },
+    {
+      "id": "60002",
+      "status": "draft",
+      "createdAt": "2026-01-20 01:35:49",
+      "contractData": "{\"description\": \"Failed to create contract: Failed to retrieve created contract with ID undefined\\n\\n\\n\", \"terms\": \"Failed to create contract: Failed to retrieve created contract with ID undefined\\n\\n\\n\", \"title\": \"Failed to create contract: Failed to retrieve created contract with ID undefined\", \"type\": \"rider\"}"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstatus\tcreatedAt\tcontractData\n60006\tdraft\t2026-01-20 02:02:04\t{\"description\": \"Test\", \"terms\": \"TestTestTestTestTest\", \"title\": \"Test\", \"type\": \"rider\"}\n60005\tdraft\t2026-01-20 01:56:56\t{\"description\": \"Test\", \"terms\": \"Test\", \"title\": \"Test\", \"type\": \"rider\"}\n60004\tdraft\t2026-01-20 01:44:46\t{\"description\": \"Test\", \"terms\": \"Test Content \", \"title\": \"Content Creation\", \"type\": \"rider\"}\n60003\tdraft\t2026-01-20 01:38:55\t{\"description\": \"\\nlockdown-install.js:1 SES_UNCAUGHT_EXCEPTION: null\\n(Test\", \"terms\": \"lockdown-install.js:1 SES_UNCAUGHT_EXCEPTION: null\\n(Test\", \"title\": \" lockdown-install.js:1 SES_UNCAUGHT_EXCEPTION: null (Test\", \"type\": \"rider\"}\n60002\tdraft\t2026-01-20 01:35:49\t{\"description\": \"Failed to create contract: Failed to retrieve created contract with ID undefined\\n\\n\\n\", \"terms\": \"Failed to create contract: Failed to retrieve created contract with ID undefined\\n\\n\\n\", \"title\": \"Failed to create contract: Failed to retrieve created contract with ID undefined\", \"type\": \"rider\"}\n",
+  "stderr": "",
+  "execution_time_ms": 97
+}

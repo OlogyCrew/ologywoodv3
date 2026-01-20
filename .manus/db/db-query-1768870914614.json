@@ -1,0 +1,75 @@
+{
+  "query": "SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'contracts' AND TABLE_SCHEMA = DATABASE();",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user KrGaEuKwKPW5NAp.root --database mP6FLm6cHUyVdEMNViNuZS --execute SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'contracts' AND TABLE_SCHEMA = DATABASE();",
+  "rows": [
+    {
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int(11)",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "bookingId",
+      "COLUMN_TYPE": "int(11)",
+      "IS_NULLABLE": "YES"
+    },
+    {
+      "COLUMN_NAME": "artistId",
+      "COLUMN_TYPE": "int(11)",
+      "IS_NULLABLE": "YES"
+    },
+    {
+      "COLUMN_NAME": "venueId",
+      "COLUMN_TYPE": "int(11)",
+      "IS_NULLABLE": "YES"
+    },
+    {
+      "COLUMN_NAME": "contractType",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "contractTitle",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "contractContent",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "contractPdfUrl",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES"
+    },
+    {
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('draft','pending_signatures','signed','executed','cancelled')",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "artistSignedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES"
+    },
+    {
+      "COLUMN_NAME": "venueSignedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES"
+    },
+    {
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\tCOLUMN_TYPE\tIS_NULLABLE\nid\tint(11)\tNO\nbookingId\tint(11)\tYES\nartistId\tint(11)\tYES\nvenueId\tint(11)\tYES\ncontractType\tvarchar(50)\tNO\ncontractTitle\tvarchar(255)\tNO\ncontractContent\ttext\tNO\ncontractPdfUrl\ttext\tYES\nstatus\tenum('draft','pending_signatures','signed','executed','cancelled')\tNO\nartistSignedAt\ttimestamp\tYES\nvenueSignedAt\ttimestamp\tYES\ncreatedAt\ttimestamp\tNO\nupdatedAt\ttimestamp\tNO\n",
+  "stderr": "",
+  "execution_time_ms": 61
+}

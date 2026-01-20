@@ -49,13 +49,20 @@ import VenueOnboardingChecklist from "./pages/VenueOnboardingChecklist";
 import VenueMessages from "./pages/VenueMessages";
 import CertificateVerification from "./pages/CertificateVerification";
 import ContractNavigation from "./components/ContractNavigation";
+import VenuesBrowse from "./pages/VenuesBrowse";
+import ContractsList from "./pages/ContractsList";
+import CreateContract from "./pages/CreateContract";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/browse" component={Browse} />
+      <Route path="/artists" component={Browse} />
       <Route path="/artist/:id" component={ArtistProfile} />
+      <Route path="/venues" component={VenuesBrowse} />
+      <Route path="/contracts" component={ContractsList} />
+      <Route path="/contracts/create" component={CreateContract} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/get-started" component={RoleSelection} />
       <Route path="/onboarding/artist" component={ArtistOnboarding} />
