@@ -3,21 +3,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, GitCompare, Download, ArrowRight } from "lucide-react";
 
 interface ContractVersion {
   id: number;
   version: number;
+  versionNumber?: number;
   contractId: number;
   title: string;
   content: string;
   createdAt: Date | string;
   createdBy: string;
+  changesSummary?: string;
 }
 
 interface ContractComparisonProps {
   contractId: number;
   versions: ContractVersion[];
+  onCompare?: (v1: number, v2: number) => void;
 }
 
 export function ContractComparison({ contractId, versions }: ContractComparisonProps) {

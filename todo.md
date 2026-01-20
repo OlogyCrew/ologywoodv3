@@ -2205,3 +2205,28 @@ The Ologywood platform is production-ready with:
 - [x] Add PDF generation to contract API endpoints
 - [x] Test PDF generation with various contract types
 - [x] Verify PDF quality and formatting
+
+
+## Email Service Integration (SendGrid/Mailgun) - IN PROGRESS
+- [ ] Set up SendGrid or Mailgun account and API keys
+- [ ] Create email service wrapper/client
+- [ ] Implement email templates for contract events
+- [ ] Send email when contract is shared with artist
+- [ ] Send email when contract is signed
+- [ ] Send email when contract is executed
+- [ ] Add email delivery tracking and logging
+- [ ] Implement retry logic for failed emails
+- [ ] Test email sending with real service
+- [ ] Add email preview functionality
+
+## Contract Versioning & Comparison - IN PROGRESS
+- [ ] Create contract_versions table in database schema
+- [ ] Implement contract version creation logic
+- [ ] Add version history tracking to contracts
+- [ ] Create version comparison service
+- [ ] Build contract comparison UI component
+- [ ] Implement diff highlighting for changes
+- [ ] Add version rollback functionality
+- [ ] Create audit trail for version changes
+- [ ] Display version history in contract detail page
+- [ ] Test versioning and comparison workflow
