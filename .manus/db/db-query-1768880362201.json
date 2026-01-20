@@ -1,0 +1,9 @@
+{
+  "query": "DELETE FROM contracts WHERE contractData IS NULL OR JSON_EXTRACT(contractData, '$.title') LIKE '%Failed%' OR JSON_EXTRACT(contractData, '$.title') LIKE '%SES_%' OR JSON_EXTRACT(contractData, '$.title') LIKE '%lockdown%' OR JSON_EXTRACT(contractData, '$.title') LIKE '%Cannot read%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user KrGaEuKwKPW5NAp.root --database mP6FLm6cHUyVdEMNViNuZS --execute DELETE FROM contracts WHERE contractData IS NULL OR JSON_EXTRACT(contractData, '$.title') LIKE '%Failed%' OR JSON_EXTRACT(contractData, '$.title') LIKE '%SES_%' OR JSON_EXTRACT(contractData, '$.title') LIKE '%lockdown%' OR JSON_EXTRACT(contractData, '$.title') LIKE '%Cannot read%';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 72
+}

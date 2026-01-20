@@ -240,18 +240,28 @@ export default function CreateContract() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validation
     if (!formData.title.trim()) {
       toast.error("Please enter a contract title");
       return;
     }
 
+    if (formData.title.length < 3) {
+      toast.error("Contract title must be at least 3 characters");
+      return;
+    }
+
+    if (formData.contractType === "rider" && !formData.artistType) {
+      toast.warning("Tip: Select an artist type to auto-fill a professional template");
+    }
+
     createContractMutation.mutate({
-      title: formData.title,
-      description: formData.description,
+      title: formData.title.trim(),
+      description: formData.description.trim(),
       contractType: formData.contractType,
       artistId: formData.artistId ? parseInt(formData.artistId) : undefined,
       venueId: formData.venueId ? parseInt(formData.venueId) : undefined,
-      terms: formData.terms,
+      terms: formData.terms.trim(),
     });
   };
 
