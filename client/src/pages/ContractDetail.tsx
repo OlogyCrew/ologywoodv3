@@ -252,10 +252,14 @@ export default function ContractDetail() {
 
         {/* Tabs for different sections */}
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="status">
               <Badge variant="outline" className="ml-2">Status</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="versions">
+              <History className="h-4 w-4 mr-2" />
+              Versions
             </TabsTrigger>
             <TabsTrigger value="audit">
               <History className="h-4 w-4 mr-2" />
@@ -477,6 +481,27 @@ export default function ContractDetail() {
               />
             )}
             </div>
+          </TabsContent>
+
+          {/* Versions Tab */}
+          <TabsContent value="versions">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Version History
+                </CardTitle>
+                <CardDescription>
+                  Track all changes and versions of this contract
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No version history available yet.</p>
+                  <Button className="mt-4">Create New Version</Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Audit Trail Tab */}
