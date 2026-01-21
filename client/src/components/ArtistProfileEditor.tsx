@@ -15,7 +15,7 @@ export function ArtistProfileEditor({ onSave }: ArtistProfileEditorProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const { data: profile } = trpc.artist.getMyProfile.useQuery();
+  const { data: profile, refetch } = trpc.artist.getMyProfile.useQuery();
 
   const [formData, setFormData] = useState({
     artistName: '',
@@ -30,7 +30,7 @@ export function ArtistProfileEditor({ onSave }: ArtistProfileEditorProps) {
       facebook: '',
       youtube: '',
       spotify: '',
-      twitter: '',
+      twitter: '', // X (formerly Twitter)
     },
   });
 
@@ -38,6 +38,16 @@ export function ArtistProfileEditor({ onSave }: ArtistProfileEditorProps) {
 
   useEffect(() => {
     if (profile) {
+      // Load social links from database
+      const socialLinks = (profile.socialLinks as any) || {};
+      const normalizedSocialLinks = {
+        instagram: socialLinks.instagram || '',
+        facebook: socialLinks.facebook || '',
+        youtube: socialLinks.youtube || '',
+        spotify: socialLinks.spotify || '',
+        twitter: socialLinks.twitter || '', // X (formerly Twitter)
+      };
+
       setFormData({
         artistName: profile.artistName || '',
         bio: profile.bio || '',
@@ -46,13 +56,7 @@ export function ArtistProfileEditor({ onSave }: ArtistProfileEditorProps) {
         feeRangeMin: profile.feeRangeMin || 0,
         feeRangeMax: profile.feeRangeMax || 0,
         touringPartySize: profile.touringPartySize || 1,
-        socialLinks: (profile.socialLinks as any) || {
-          instagram: '',
-          facebook: '',
-          youtube: '',
-          spotify: '',
-          twitter: '',
-        },
+        socialLinks: normalizedSocialLinks,
       });
     }
   }, [profile]);
@@ -115,8 +119,12 @@ export function ArtistProfileEditor({ onSave }: ArtistProfileEditorProps) {
       setSuccess(true);
       setIsEditing(false);
       onSave?.();
-
-      setTimeout(() => setSuccess(false), 3000);
+      
+      // Refetch profile to ensure latest data is displayed
+      setTimeout(() => {
+        refetch();
+        setSuccess(false);
+      }, 1500);
     } catch (err: any) {
       setError(err.message || 'Failed to update profile');
     } finally {
@@ -177,6 +185,29 @@ export function ArtistProfileEditor({ onSave }: ArtistProfileEditorProps) {
             <div className="col-span-2">
               <p className="text-sm text-gray-600">Bio</p>
               <p className="font-medium">{formData.bio || 'Not set'}</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-sm text-gray-600 mb-3">Social Links</p>
+              <div className="flex gap-3 flex-wrap">
+                {Object.entries(formData.socialLinks).map(([platform, value]) => {
+                  if (!value) return null;
+                  const displayName = platform === 'twitter' ? 'X' : platform.charAt(0).toUpperCase() + platform.slice(1);
+                  return (
+                    <a
+                      key={platform}
+                      href={value}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm font-medium transition-colors"
+                    >
+                      {displayName}
+                    </a>
+                  );
+                })}
+                {Object.values(formData.socialLinks).every(v => !v) && (
+                  <p className="text-sm text-gray-500">No social links added</p>
+                )}
+              </div>
             </div>
           </div>
         </Card>
@@ -292,19 +323,22 @@ export function ArtistProfileEditor({ onSave }: ArtistProfileEditorProps) {
             </div>
 
             <div className="border-t pt-6">
-              <h4 className="font-medium mb-4">Social Links</h4>
+              <h4 className="font-medium mb-4">Connect Your Social Media</h4>
               <div className="space-y-3">
-                {Object.entries(formData.socialLinks).map(([platform, value]) => (
-                  <div key={platform}>
-                    <label className="block text-sm font-medium mb-1 capitalize">{platform}</label>
-                    <Input
-                      type="text"
-                      value={value || ''}
-                      onChange={(e) => handleSocialLinkChange(platform, e.target.value)}
-                      placeholder={`Your ${platform} handle or URL`}
-                    />
-                  </div>
-                ))}
+                {Object.entries(formData.socialLinks).map(([platform, value]) => {
+                  const displayName = platform === 'twitter' ? 'X (formerly Twitter)' : platform.charAt(0).toUpperCase() + platform.slice(1);
+                  return (
+                    <div key={platform}>
+                      <label className="block text-sm font-medium mb-1">{displayName}</label>
+                      <Input
+                        type="text"
+                        value={value || ''}
+                        onChange={(e) => handleSocialLinkChange(platform, e.target.value)}
+                        placeholder={`Your ${displayName} URL or handle`}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

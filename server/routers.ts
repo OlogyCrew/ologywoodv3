@@ -993,8 +993,18 @@ export const appRouter = router({
     getAverageRating: publicProcedure
       .input(z.object({ artistId: z.number() }))
       .query(async ({ input }) => {
-        const rating = await db.getAverageRatingForArtist(input.artistId);
-        return rating || { averageRating: 0, reviewCount: 0 };
+        try {
+          const artistReviews = await db.getReviewsByArtistId(input.artistId);
+          if (!artistReviews || artistReviews.length === 0) {
+            return { averageRating: 0, reviewCount: 0 };
+          }
+          const totalRating = artistReviews.reduce((sum, review) => sum + (review.rating || 0), 0);
+          const averageRating = totalRating / artistReviews.length;
+          return { averageRating: Math.round(averageRating * 10) / 10, reviewCount: artistReviews.length };
+        } catch (error) {
+          console.error('Error getting average rating:', error);
+          return { averageRating: 0, reviewCount: 0 };
+        }
       }),
 
     // Respond to a review (artist only)

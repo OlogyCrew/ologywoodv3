@@ -3,11 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Eye, Calendar, DollarSign, TrendingUp, CheckCircle, Clock, XCircle } from 'lucide-react';
 
 export default function AnalyticsDashboard() {
-  const { data: viewsTotal } = trpc.analytics.getProfileViews.useQuery({});
-  const { data: views30Days } = trpc.analytics.getProfileViews.useQuery({ days: 30 });
-  const { data: views7Days } = trpc.analytics.getProfileViews.useQuery({ days: 7 });
-  const { data: bookingStats } = trpc.analytics.getBookingStats.useQuery();
-  const { data: revenueData } = trpc.analytics.getRevenueByMonth.useQuery({ months: 6 });
+  const { data: viewsTotal } = trpc.profileAnalytics.getProfileViews.useQuery({});
+  const { data: views30Days } = trpc.profileAnalytics.getProfileViews.useQuery({ days: 30 });
+  const { data: views7Days } = trpc.profileAnalytics.getProfileViews.useQuery({ days: 7 });
+  const { data: bookingStats } = trpc.profileAnalytics.getBookingStats.useQuery();
+  const { data: revenueData } = trpc.profileAnalytics.getRevenueByMonth.useQuery({ months: 6 });
   
   const conversionRate = bookingStats && bookingStats.total > 0
     ? ((bookingStats.confirmed + bookingStats.completed) / bookingStats.total * 100).toFixed(1)

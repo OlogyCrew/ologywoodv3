@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Music, Calendar, MessageSquare, Settings, ArrowLeft, FileText, Star, Heart, TrendingUp, Bell, HelpCircle, Headphones } from "lucide-react";
+import { Music, Calendar, MessageSquare, Settings, ArrowLeft, FileText, Star, Heart, TrendingUp, Bell, HelpCircle, Headphones, ChevronDown } from "lucide-react";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 import ReviewsTabContent from "@/components/ReviewsTabContent";
 import UnreadBadge from "@/components/UnreadBadge";
@@ -31,6 +31,12 @@ export default function Dashboard() {
   const { user, isAuthenticated, loading } = useAuth();
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("bookings");
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    analytics: false,
+    reviews: false,
+    photos: false,
+    riderAnalytics: false,
+  });
 
   const { data: artistProfile } = trpc.artist.getMyProfile.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === 'artist',
@@ -104,6 +110,13 @@ export default function Dashboard() {
     return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -168,56 +181,58 @@ export default function Dashboard() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="flex w-full overflow-x-auto gap-2 bg-transparent border-b border-border">
-            <TabsTrigger value="bookings">
-              <Calendar className="h-4 w-4 mr-2" />
-              Bookings
-            </TabsTrigger>
-            <TabsTrigger value="profile">
-              <Settings className="h-4 w-4 mr-2" />
-              Profile
-            </TabsTrigger>
-            {isArtist && (
-              <TabsTrigger value="availability">
-                <Calendar className="h-4 w-4 mr-2" />
-                Availability
-              </TabsTrigger>
-            )}
-            {isArtist && (
-              <TabsTrigger value="riders">
-                <FileText className="h-4 w-4 mr-2" />
-                Riders
-              </TabsTrigger>
-            )}
-            {isArtist && (
-              <TabsTrigger value="riderAnalytics">
-                <TrendingUp className="h-4 w-4 mr-2" />
-                Rider Analytics
-              </TabsTrigger>
-            )}
-            {isArtist && (
-              <TabsTrigger value="subscription">
-                <Settings className="h-4 w-4 mr-2" />
-                Subscription
-              </TabsTrigger>
-            )}
+            {/* ARTIST TABS - 6 TAB STRUCTURE */}
             {isArtist && (
               <>
-                <TabsTrigger value="analytics">
+                {/* Tab 1: Bookings & Availability */}
+                <TabsTrigger value="bookings">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Bookings & Availability
+                </TabsTrigger>
+
+                {/* Tab 2: Profile */}
+                <TabsTrigger value="profile">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Profile
+                </TabsTrigger>
+
+                {/* Tab 3: Riders */}
+                <TabsTrigger value="riders">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Riders
+                </TabsTrigger>
+
+                {/* Tab 4: Performance (consolidated) */}
+                <TabsTrigger value="performance">
                   <TrendingUp className="h-4 w-4 mr-2" />
-                  Analytics
+                  Performance
                 </TabsTrigger>
-                <TabsTrigger value="reviews">
+
+                {/* Tab 5: Messages */}
+                <TabsTrigger value="messaging">
                   <MessageSquare className="h-4 w-4 mr-2" />
-                  Reviews
+                  Messages
                 </TabsTrigger>
-                <TabsTrigger value="photos">
-                  <Music className="h-4 w-4 mr-2" />
-                  Photos
+
+                {/* Tab 6: Settings */}
+                <TabsTrigger value="settings">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
                 </TabsTrigger>
               </>
             )}
+
+            {/* VENUE TABS */}
             {isVenue && (
               <>
+                <TabsTrigger value="bookings">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Bookings
+                </TabsTrigger>
+                <TabsTrigger value="profile">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Profile
+                </TabsTrigger>
                 <TabsTrigger value="calendar">
                   <Calendar className="h-4 w-4 mr-2" />
                   Calendar
@@ -234,41 +249,21 @@ export default function Dashboard() {
                   <Music className="h-4 w-4 mr-2" />
                   Photos
                 </TabsTrigger>
+                <TabsTrigger value="messaging">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Messages
+                </TabsTrigger>
+                <TabsTrigger value="notifications">
+                  <Bell className="h-4 w-4 mr-2" />
+                  Notifications
+                </TabsTrigger>
+                <TabsTrigger value="support">
+                  <Headphones className="h-4 w-4 mr-2" />
+                  Support
+                </TabsTrigger>
               </>
             )}
-            
-            {/* Messaging Tab (Both roles) */}
-            <TabsTrigger value="messaging">
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Messages
-            </TabsTrigger>
-            
-            {/* Notifications Tab (Both roles) */}
-            <TabsTrigger value="notifications">
-              <Bell className="h-4 w-4 mr-2" />
-              Notifications
-            </TabsTrigger>
-            
-            {/* Support Tab (Both roles) */}
-            <TabsTrigger value="support">
-              <Headphones className="h-4 w-4 mr-2" />
-              Support
-            </TabsTrigger>
-            
-            {/* Help Tab (Both roles) */}
-            <TabsTrigger value="help">
-              <HelpCircle className="h-4 w-4 mr-2" />
-              Help
-            </TabsTrigger>
-            
-            {/* Calendar Sync Tab (Artists only) */}
-            {isArtist && (
-              <TabsTrigger value="calendar-sync">
-                <Calendar className="h-4 w-4 mr-2" />
-                Calendar Sync
-              </TabsTrigger>
-            )}
-            
+
             {/* Admin Testing Tab (Admin only) */}
             {user?.role === 'admin' && (
               <TabsTrigger value="admin-testing">
@@ -278,116 +273,120 @@ export default function Dashboard() {
             )}
           </TabsList>
 
-          {/* Bookings Tab */}
-          <TabsContent value="bookings" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {isArtist ? "My Bookings" : "Booking Requests"}
-                </CardTitle>
-                <CardDescription>
-                  {isArtist 
-                    ? "Manage your upcoming and past performances"
-                    : "View your booking requests and confirmations"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {bookings && bookings.length > 0 ? (
-                  <div className="space-y-4">
-                    {bookings.map((booking) => (
-                      <Card 
-                        key={booking.id} 
-                        className="cursor-pointer hover:shadow-lg transition-shadow"
-                        onClick={() => navigate(`/booking/${booking.id}`)}
-                      >
-                        <CardHeader>
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <CardTitle className="text-lg">{booking.venueName}</CardTitle>
-                              <CardDescription>
-                                {formatDate(booking.eventDate)}
-                                {booking.eventTime && ` at ${booking.eventTime}`}
-                              </CardDescription>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge className={getStatusColor(booking.status)}>
-                                {booking.status}
-                              </Badge>
-                              <UnreadBadge bookingId={booking.id} />
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          {booking.venueAddress && (
-                            <p className="text-sm text-muted-foreground mb-2">
-                              📍 {booking.venueAddress}
-                            </p>
-                          )}
-                          {booking.totalFee && (
-                            <p className="text-sm text-muted-foreground mb-2">
-                              💰 ${booking.totalFee}
-                            </p>
-                          )}
-                          {booking.eventDetails && (
-                            <p className="text-sm text-muted-foreground mb-4">
-                              {booking.eventDetails}
-                            </p>
-                          )}
-                          
-                          {isArtist && booking.status === 'pending' && (
-                            <div className="flex gap-2">
-                              <Button 
-                                size="sm"
-                                onClick={() => updateBookingStatus.mutate({ id: booking.id, status: 'confirmed' })}
-                                disabled={updateBookingStatus.isPending}
-                              >
-                                Accept
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => updateBookingStatus.mutate({ id: booking.id, status: 'cancelled' })}
-                                disabled={updateBookingStatus.isPending}
-                              >
-                                Decline
-                              </Button>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p className="mb-4">No bookings yet</p>
-                    {isVenue && (
-                      <div className="flex gap-2 justify-center">
-                        <a href="/discover-artists" className="no-underline">
-                          <Button>
-                            Discover Artists
-                          </Button>
-                        </a>
-                        <a href="/venue-dashboard" className="no-underline">
-                          <Button variant="outline">
-                            Venue Dashboard
-                          </Button>
-                        </a>
-                      </div>
-                    )}
-                    {isArtist && (
-                      <a href="/artist-dashboard" className="no-underline">
-                        <Button>
-                          Artist Dashboard
-                        </Button>
-                      </a>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* ============ ARTIST TABS CONTENT ============ */}
 
-          {/* Profile Tab */}
+          {/* Tab 1: Bookings & Availability */}
+          {isArtist && (
+            <TabsContent value="bookings" className="space-y-4">
+              {/* Bookings Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>My Bookings</CardTitle>
+                  <CardDescription>Manage your upcoming and past performances</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {bookings && bookings.length > 0 ? (
+                    <div className="space-y-4">
+                      {bookings.map((booking) => (
+                        <Card 
+                          key={booking.id} 
+                          className="cursor-pointer hover:shadow-lg transition-shadow"
+                          onClick={() => navigate(`/booking/${booking.id}`)}
+                        >
+                          <CardHeader>
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <CardTitle className="text-lg">{booking.venueName}</CardTitle>
+                                <CardDescription>
+                                  {formatDate(booking.eventDate)}
+                                  {booking.eventTime && ` at ${booking.eventTime}`}
+                                </CardDescription>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge className={getStatusColor(booking.status)}>
+                                  {booking.status}
+                                </Badge>
+                                <UnreadBadge bookingId={booking.id} />
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            {booking.venueAddress && (
+                              <p className="text-sm text-muted-foreground mb-2">
+                                📍 {booking.venueAddress}
+                              </p>
+                            )}
+                            {booking.totalFee && (
+                              <p className="text-sm text-muted-foreground mb-2">
+                                💰 ${booking.totalFee}
+                              </p>
+                            )}
+                            {booking.eventDetails && (
+                              <p className="text-sm text-muted-foreground mb-4">
+                                {booking.eventDetails}
+                              </p>
+                            )}
+                            
+                            {isArtist && booking.status === 'pending' && (
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm"
+                                  onClick={() => updateBookingStatus.mutate({ id: booking.id, status: 'confirmed' })}
+                                  disabled={updateBookingStatus.isPending}
+                                >
+                                  Accept
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => updateBookingStatus.mutate({ id: booking.id, status: 'cancelled' })}
+                                  disabled={updateBookingStatus.isPending}
+                                >
+                                  Decline
+                                </Button>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p className="mb-4">No bookings yet</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Availability Section */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Your Availability</CardTitle>
+                      <CardDescription>Click dates to mark your availability</CardDescription>
+                    </div>
+                    <Link href="/availability">
+                      <Button asChild size="sm">
+                        <span>Full Calendar View</span>
+                      </Button>
+                    </Link>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <AvailabilityCalendar
+                    availability={artistBookings?.map(b => ({
+                      date: typeof b.eventDate === 'string' ? b.eventDate : new Date(b.eventDate).toISOString().split('T')[0],
+                      status: 'booked' as const
+                    })) || []}
+                    readOnly
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {/* Tab 2: Profile */}
           <TabsContent value="profile">
             <Card>
               <CardHeader>
@@ -399,6 +398,16 @@ export default function Dashboard() {
                       className="h-20 w-20 rounded-full object-cover border-2 border-primary"
                     />
                   ) : isArtist ? (
+                    <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Music className="h-10 w-10 text-primary" />
+                    </div>
+                  ) : isVenue && venueProfile?.profilePhotoUrl ? (
+                    <img 
+                      src={venueProfile.profilePhotoUrl} 
+                      alt={venueProfile.venueName}
+                      className="h-20 w-20 rounded-full object-cover border-2 border-primary"
+                    />
+                  ) : isVenue ? (
                     <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
                       <Music className="h-10 w-10 text-primary" />
                     </div>
@@ -477,185 +486,340 @@ export default function Dashboard() {
             </Card>
           </TabsContent>
 
-          {/* Availability Tab (Artists only) */}
-          {isArtist && (
-            <TabsContent value="availability">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold">Manage Availability</h2>
-                    <p className="text-muted-foreground">Click dates to mark your availability</p>
-                  </div>
-                  <Link href="/availability">
-                    <Button asChild>
-                      <span>Full Calendar View</span>
-                    </Button>
-                  </Link>
-                </div>
-                <AvailabilityCalendar
-                  availability={artistBookings?.map(b => ({
-                    date: typeof b.eventDate === 'string' ? b.eventDate : new Date(b.eventDate).toISOString().split('T')[0],
-                    status: 'booked' as const
-                  })) || []}
-                  readOnly
-                />
-              </div>
-            </TabsContent>
-          )}
-
-          {/* Riders Tab (Artists only) */}
+          {/* Tab 3: Riders (Artists only) */}
           {isArtist && (
             <TabsContent value="riders">
               <RiderTemplateBuilder />
             </TabsContent>
           )}
 
-          {/* Rider Analytics Tab (Artists only) */}
+          {/* Tab 4: Performance (Artists only - consolidated) */}
           {isArtist && (
-            <TabsContent value="riderAnalytics">
-              <div className="space-y-4">
-                <div>
-                  <h2 className="text-2xl font-bold mb-2">Rider Analytics</h2>
-                  <p className="text-muted-foreground mb-6">Track your rider performance, acceptance rates, and negotiation metrics</p>
-                </div>
-                <RiderAnalyticsDashboard artistId={user?.id || 0} />
-              </div>
-            </TabsContent>
-          )}
-
-          {/* Subscription Tab (Artists only) */}
-          {isArtist && (
-            <TabsContent value="subscription">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold">Subscription</h2>
-                    <p className="text-muted-foreground">Manage your Ologywood subscription</p>
+            <TabsContent value="performance" className="space-y-4">
+              {/* Analytics Section */}
+              <Card>
+                <CardHeader 
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => toggleSection('analytics')}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Analytics</CardTitle>
+                      <CardDescription>Track your profile views and engagement</CardDescription>
+                    </div>
+                    <ChevronDown 
+                      className={`h-5 w-5 transition-transform ${expandedSections.analytics ? 'rotate-180' : ''}`}
+                    />
                   </div>
-                  <Link href="/subscription">
-                    <Button asChild>
-                      <span>View Details</span>
-                    </Button>
-                  </Link>
-                </div>
-                <Card>
-                  <CardContent className="pt-6">
-                    <p className="text-muted-foreground text-center">
-                      Subscribe to Ologywood to access all features and start receiving bookings.
-                      Click "View Details" to manage your subscription.
-                    </p>
+                </CardHeader>
+                {expandedSections.analytics && (
+                  <CardContent>
+                    <AnalyticsDashboard />
                   </CardContent>
-                </Card>
-              </div>
+                )}
+              </Card>
+
+              {/* Rider Analytics Section */}
+              <Card>
+                <CardHeader 
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => toggleSection('riderAnalytics')}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Rider Analytics</CardTitle>
+                      <CardDescription>Track your rider performance and acceptance rates</CardDescription>
+                    </div>
+                    <ChevronDown 
+                      className={`h-5 w-5 transition-transform ${expandedSections.riderAnalytics ? 'rotate-180' : ''}`}
+                    />
+                  </div>
+                </CardHeader>
+                {expandedSections.riderAnalytics && (
+                  <CardContent>
+                    <RiderAnalyticsDashboard artistId={user?.id || 0} />
+                  </CardContent>
+                )}
+              </Card>
+
+              {/* Reviews Section */}
+              <Card>
+                <CardHeader 
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => toggleSection('reviews')}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Reviews</CardTitle>
+                      <CardDescription>See what venues say about your performances</CardDescription>
+                    </div>
+                    <ChevronDown 
+                      className={`h-5 w-5 transition-transform ${expandedSections.reviews ? 'rotate-180' : ''}`}
+                    />
+                  </div>
+                </CardHeader>
+                {expandedSections.reviews && (
+                  <CardContent>
+                    <ReviewsTabContent artistId={artistProfile?.id} />
+                  </CardContent>
+                )}
+              </Card>
+
+              {/* Photos Section */}
+              <Card>
+                <CardHeader 
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => toggleSection('photos')}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Photos</CardTitle>
+                      <CardDescription>Manage your performance photos and media</CardDescription>
+                    </div>
+                    <ChevronDown 
+                      className={`h-5 w-5 transition-transform ${expandedSections.photos ? 'rotate-180' : ''}`}
+                    />
+                  </div>
+                </CardHeader>
+                {expandedSections.photos && (
+                  <CardContent>
+                    <PhotoGalleryManager role="artist" />
+                  </CardContent>
+                )}
+              </Card>
             </TabsContent>
           )}
 
-          {/* Analytics Tab (Artists only) */}
+          {/* Tab 5: Messages (Artists only) */}
           {isArtist && (
-            <>
-              <TabsContent value="analytics">
-                <AnalyticsDashboard />
-              </TabsContent>
-              <TabsContent value="reviews">
-                <ReviewsTabContent artistId={artistProfile?.id} />
-              </TabsContent>
-              <TabsContent value="photos">
-                <PhotoGalleryManager role="artist" />
-              </TabsContent>
-            </>
+            <TabsContent value="messaging">
+              <Messaging />
+            </TabsContent>
           )}
-          
+
+          {/* Tab 6: Settings (Artists only - consolidated) */}
+          {isArtist && (
+            <TabsContent value="settings" className="space-y-4">
+              {/* Notifications Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Notifications</CardTitle>
+                  <CardDescription>Manage your notification preferences</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <NotificationCenter />
+                </CardContent>
+              </Card>
+
+              {/* Subscription Section */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Subscription</CardTitle>
+                      <CardDescription>Manage your Ologywood subscription</CardDescription>
+                    </div>
+                    <Link href="/subscription">
+                      <Button asChild size="sm">
+                        <span>View Details</span>
+                      </Button>
+                    </Link>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    Subscribe to Ologywood to access all features and start receiving bookings.
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Calendar Sync Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Calendar Sync</CardTitle>
+                  <CardDescription>Sync your availability with external calendars</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <CalendarSync />
+                </CardContent>
+              </Card>
+
+              {/* Support Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Support</CardTitle>
+                  <CardDescription>Get help from our support team</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <p className="text-muted-foreground">
+                      Need help? Create a support ticket and our team will assist you as soon as possible.
+                    </p>
+                    <div className="flex gap-2">
+                      <Link href="/support">
+                        <Button size="sm">View My Tickets</Button>
+                      </Link>
+                      <Link href="/support/create">
+                        <Button size="sm" variant="outline">Create New Ticket</Button>
+                      </Link>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Help Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Help Center</CardTitle>
+                  <CardDescription>Find answers to common questions</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <p className="text-muted-foreground">
+                      Browse our knowledge base, FAQs, and tutorials.
+                    </p>
+                    <Link href="/help">
+                      <Button size="sm">Go to Help Center</Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {/* ============ VENUE TABS CONTENT ============ */}
+
+          {/* Bookings Tab (Venues) */}
+          {isVenue && (
+            <TabsContent value="bookings" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Booking Requests</CardTitle>
+                  <CardDescription>View your booking requests and confirmations</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {bookings && bookings.length > 0 ? (
+                    <div className="space-y-4">
+                      {bookings.map((booking) => (
+                        <Card 
+                          key={booking.id} 
+                          className="cursor-pointer hover:shadow-lg transition-shadow"
+                          onClick={() => navigate(`/booking/${booking.id}`)}
+                        >
+                          <CardHeader>
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <CardTitle className="text-lg">{booking.venueName}</CardTitle>
+                                <CardDescription>
+                                  {formatDate(booking.eventDate)}
+                                  {booking.eventTime && ` at ${booking.eventTime}`}
+                                </CardDescription>
+                              </div>
+                              <Badge className={getStatusColor(booking.status)}>
+                                {booking.status}
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            {booking.venueAddress && (
+                              <p className="text-sm text-muted-foreground mb-2">
+                                📍 {booking.venueAddress}
+                              </p>
+                            )}
+                            {booking.totalFee && (
+                              <p className="text-sm text-muted-foreground mb-2">
+                                💰 ${booking.totalFee}
+                              </p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p className="mb-4">No bookings yet</p>
+                      <a href="/browse" className="no-underline">
+                        <Button>
+                          Browse Artists
+                        </Button>
+                      </a>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
           {/* Calendar Tab (Venues) */}
           {isVenue && (
             <TabsContent value="calendar">
               <VenueCalendar />
             </TabsContent>
           )}
-          
+
           {/* Saved Artists Tab (Venues) */}
           {isVenue && (
             <TabsContent value="saved">
               <SavedArtistsTab />
             </TabsContent>
           )}
-          
+
           {/* Templates Tab (Venues) */}
           {isVenue && (
             <TabsContent value="templates">
               <BookingTemplatesTab />
             </TabsContent>
           )}
-          
+
           {/* Photos Tab (Venues) */}
           {isVenue && (
             <TabsContent value="photos">
               <PhotoGalleryManager role="venue" />
             </TabsContent>
           )}
-          
-          {/* Messaging Tab Content */}
-          <TabsContent value="messaging">
-            <Messaging />
-          </TabsContent>
-          
-          {/* Notifications Tab Content */}
-          <TabsContent value="notifications">
-            <NotificationCenter />
-          </TabsContent>
-          
-          {/* Calendar Sync Tab Content (Artists only) */}
-          {isArtist && (
-            <TabsContent value="calendar-sync">
-              <CalendarSync />
+
+          {/* Messaging Tab (Venues) */}
+          {isVenue && (
+            <TabsContent value="messaging">
+              <Messaging />
             </TabsContent>
           )}
-          
-          {/* Support Tab Content */}
-          <TabsContent value="support">
-            <Card>
-              <CardHeader>
-                <CardTitle>Support Tickets</CardTitle>
-                <CardDescription>Manage your support requests and get help from our team</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <p className="text-muted-foreground mb-4">
-                    Need help? Create a support ticket and our team will assist you as soon as possible.
-                  </p>
-                  <div className="flex gap-2">
-                    <Link href="/support">
-                      <Button>View My Tickets</Button>
-                    </Link>
-                    <Link href="/support/create">
-                      <Button variant="outline">Create New Ticket</Button>
-                    </Link>
+
+          {/* Notifications Tab (Venues) */}
+          {isVenue && (
+            <TabsContent value="notifications">
+              <NotificationCenter />
+            </TabsContent>
+          )}
+
+          {/* Support Tab (Venues) */}
+          {isVenue && (
+            <TabsContent value="support">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Support Tickets</CardTitle>
+                  <CardDescription>Manage your support requests</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <p className="text-muted-foreground mb-4">
+                      Need help? Create a support ticket and our team will assist you.
+                    </p>
+                    <div className="flex gap-2">
+                      <Link href="/support">
+                        <Button>View My Tickets</Button>
+                      </Link>
+                      <Link href="/support/create">
+                        <Button variant="outline">Create New Ticket</Button>
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          {/* Help Tab Content */}
-          <TabsContent value="help">
-            <Card>
-              <CardHeader>
-                <CardTitle>Help Center</CardTitle>
-                <CardDescription>Find answers to common questions and learn how to use Ologywood</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <p className="text-muted-foreground mb-4">
-                    Browse our knowledge base, FAQs, and tutorials to find the information you need.
-                  </p>
-                  <Link href="/help">
-                    <Button>Go to Help Center</Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          {/* Admin Testing Tab Content */}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {/* Admin Testing Tab */}
           {user?.role === 'admin' && (
             <TabsContent value="admin-testing">
               <AdminDashboard />

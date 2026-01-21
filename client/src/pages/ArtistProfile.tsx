@@ -49,7 +49,7 @@ export default function ArtistProfile() {
   );
   
   // Track profile view
-  const trackView = trpc.analytics.trackView.useMutation();
+  const trackView = trpc.profileAnalytics.trackView.useMutation();
   
   useEffect(() => {
     if (isValidId && !isLoading) {
@@ -186,7 +186,7 @@ export default function ArtistProfile() {
     );
   }
 
-  const socialLinks = artist.socialLinks as { instagram?: string; facebook?: string; youtube?: string; spotify?: string } | null;
+  const socialLinks = artist.socialLinks as { instagram?: string; facebook?: string; youtube?: string; spotify?: string; twitter?: string } | null;
   const mediaGallery = artist.mediaGallery as { photos: string[]; videos: string[] } | null;
 
   return (
@@ -482,6 +482,12 @@ export default function ArtistProfile() {
                     <a href={socialLinks.spotify} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm hover:text-primary">
                       <Music2 className="h-4 w-4" />
                       <span>Spotify</span>
+                    </a>
+                  )}
+                  {socialLinks?.twitter && (
+                    <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm hover:text-primary">
+                      <span className="h-4 w-4 font-bold">𝕏</span>
+                      <span>X</span>
                     </a>
                   )}
                 </CardContent>

@@ -34,12 +34,12 @@ export const artistProfiles = mysqlTable("artist_profiles", {
   profilePhotoUrl: text("profilePhotoUrl"),
   mediaGallery: json("mediaGallery").$type<{ photos: string[], videos: string[] }>(),
   websiteUrl: text("websiteUrl"),
-  socialLinks: json("socialLinks").$type<{ instagram?: string, facebook?: string, youtube?: string, spotify?: string, twitter?: string }>(),
+  socialLinks: json("socialLinks").$type<{ instagram?: string, facebook?: string, youtube?: string, spotify?: string, twitter?: string, tiktok?: string, x?: string }>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
-export type ArtistProfile = typeof artistProfiles.$inferSelect;
+export type ArtistProfile = typeof artistProfiles.$inferSelect & { socialLinks?: { instagram?: string, facebook?: string, youtube?: string, spotify?: string, twitter?: string, tiktok?: string, x?: string } };
 export type InsertArtistProfile = typeof artistProfiles.$inferInsert;
 
 /**
